@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 
 import { BrandMark, FlyingBird } from "./illustrations";
+import { useLanguage } from "./language";
 
-const WELCOME_SESSION_KEY = "petbites:welcome-seen:v1";
+const WELCOME_SESSION_KEY = "petbites:welcome-seen:v6-production";
 const WELCOME_DURATION_MS = 1800;
 const REDUCED_MOTION_DURATION_MS = 520;
 const EXIT_DURATION_MS = 280;
 
 export function WelcomeScreen() {
+  const { t } = useLanguage();
   const [visible, setVisible] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const removeTimerRef = useRef<number | null>(null);
@@ -53,10 +55,10 @@ export function WelcomeScreen() {
       className={`welcome-screen ${leaving ? "welcome-screen--leaving" : ""}`}
       role="status"
       aria-live="polite"
-      aria-label="Selamat datang di PetBites"
+      aria-label={t("welcome.aria")}
     >
       <button type="button" className="welcome-screen__skip" onClick={dismiss}>
-        Lewati
+        {t("welcome.skip")}
       </button>
 
       <div className="welcome-screen__sky" />
@@ -66,11 +68,9 @@ export function WelcomeScreen() {
         <div className="welcome-screen__logo">
           <BrandMark />
         </div>
-        <p className="welcome-screen__eyebrow">Selamat datang di</p>
+        <p className="welcome-screen__eyebrow">{t("welcome.eyebrow")}</p>
         <h1>PetBites</h1>
-        <p className="welcome-screen__copy">
-          Panduan pakan yang lebih mudah dipahami untuk burung kesayanganmu.
-        </p>
+        <p className="welcome-screen__copy">{t("welcome.copy")}</p>
         <div className="welcome-screen__loader" aria-hidden="true">
           <span />
         </div>

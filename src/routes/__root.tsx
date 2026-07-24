@@ -9,8 +9,20 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
+import { LanguageProvider } from "@/features/petbites/language";
+
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import appCss from "../styles.css?url";
+
+const INITIAL_THEME_SCRIPT = `(() => {
+  try {
+    const saved = localStorage.getItem("petbites:theme");
+    const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.classList.toggle("dark", dark);
+  } catch {
+    // The application will apply the theme after hydration.
+  }
+})();`;
 
 function NotFoundComponent() {
   return (
@@ -97,6 +109,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      {
+        rel: "preload",
+        href: "/theme/forest-day.webp",
+        as: "image",
+        type: "image/webp",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        rel: "preload",
+        href: "/theme/forest-night.webp",
+        as: "image",
+        type: "image/webp",
+        media: "(prefers-color-scheme: dark)",
+      },
+      { rel: "preload", href: "/welcome/flying-bird.webp", as: "image", type: "image/webp" },
     ],
   }),
   shellComponent: RootShell,
@@ -107,8 +134,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="id">
+    <html lang="id" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: INITIAL_THEME_SCRIPT }} />
         <HeadContent />
       </head>
       <body>
@@ -124,7 +152,9 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <LanguageProvider>
+        <Outlet />
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

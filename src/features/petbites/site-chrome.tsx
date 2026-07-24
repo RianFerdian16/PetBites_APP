@@ -1,4 +1,4 @@
-import { Database, Moon, RefreshCw, Sun } from "lucide-react";
+import { Database, Languages, Moon, RefreshCw, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -6,27 +6,52 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { BrandMark } from "./illustrations";
+import { useLanguage } from "./language";
 
-export function SiteHeader({ onHome }: { onHome: () => void }) {
+type HomeSectionId = "cara-kerja" | "pilih-burung";
+
+export function SiteHeader({
+  onHome,
+  onNavigateSection,
+}: {
+  onHome: () => void;
+  onNavigateSection: (sectionId: HomeSectionId) => void;
+}) {
   const [dark, setDark] = useState(false);
+  const { language, toggleLanguage, t } = useLanguage();
 
   useEffect(() => {
-    let savedTheme: string | null = null;
-    try {
-      savedTheme = window.localStorage.getItem("petbites:theme");
-    } catch {
-      // Use the operating-system preference when storage is unavailable.
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    function readSavedTheme() {
+      try {
+        return window.localStorage.getItem("petbites:theme");
+      } catch {
+        return null;
+      }
     }
 
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const shouldUseDark = savedTheme ? savedTheme === "dark" : prefersDark;
-    document.documentElement.classList.toggle("dark", shouldUseDark);
-    setDark(shouldUseDark);
+    function applyTheme(shouldUseDark: boolean) {
+      document.documentElement.classList.toggle("dark", shouldUseDark);
+      updateThemeColor(shouldUseDark);
+      setDark(shouldUseDark);
+    }
+
+    const savedTheme = readSavedTheme();
+    applyTheme(savedTheme ? savedTheme === "dark" : mediaQuery.matches);
+
+    function handleSystemThemeChange(event: MediaQueryListEvent) {
+      if (!readSavedTheme()) applyTheme(event.matches);
+    }
+
+    mediaQuery.addEventListener("change", handleSystemThemeChange);
+    return () => mediaQuery.removeEventListener("change", handleSystemThemeChange);
   }, []);
 
   function toggleTheme() {
     const nextDark = !dark;
     document.documentElement.classList.toggle("dark", nextDark);
+    updateThemeColor(nextDark);
 
     try {
       window.localStorage.setItem("petbites:theme", nextDark ? "dark" : "light");
@@ -37,28 +62,67 @@ export function SiteHeader({ onHome }: { onHome: () => void }) {
     setDark(nextDark);
   }
 
+  const languageLabel =
+    language === "id" ? t("language.switchToEnglish") : t("language.switchToIndonesian");
+
   return (
     <header className="site-header">
       <div className="site-header__inner">
-        <button className="site-header__brand" type="button" onClick={onHome}>
+        <button
+          className="site-header__brand"
+          type="button"
+          onClick={onHome}
+          aria-label={t("header.goHome")}
+        >
           <BrandMark compact />
           <span>
             <strong>PetBites</strong>
-            <small>Panduan nutrisi burung</small>
+            <small>{t("header.tagline")}</small>
           </span>
         </button>
 
-        <nav className="site-header__nav" aria-label="Navigasi utama">
-          <a href="#cara-kerja">Cara kerja</a>
-          <a href="#pilih-burung">Pilih burung</a>
+        <nav className="site-header__nav" aria-label={t("header.navigation")}>
+          <a
+            href="#cara-kerja"
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigateSection("cara-kerja");
+            }}
+          >
+            {t("header.howItWorks")}
+          </a>
+          <a
+            href="#pilih-burung"
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigateSection("pilih-burung");
+            }}
+          >
+            {t("header.chooseBird")}
+          </a>
+          <button
+            type="button"
+            className="language-toggle"
+            onClick={toggleLanguage}
+            aria-label={languageLabel}
+            title={languageLabel}
+          >
+            <Languages className="h-[17px] w-[17px]" aria-hidden="true" />
+            <span aria-live="polite">{language === "id" ? "EN" : "ID"}</span>
+          </button>
           <button
             type="button"
             className="theme-toggle"
             onClick={toggleTheme}
-            aria-label={dark ? "Gunakan tema terang" : "Gunakan tema gelap"}
-            title={dark ? "Tema terang" : "Tema gelap"}
+            aria-label={dark ? t("theme.useLight") : t("theme.useDark")}
+            title={dark ? t("theme.useLight") : t("theme.useDark")}
+            aria-pressed={dark}
           >
-            {dark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
+            {dark ? (
+              <Sun className="h-[18px] w-[18px]" aria-hidden="true" />
+            ) : (
+              <Moon className="h-[18px] w-[18px]" aria-hidden="true" />
+            )}
           </button>
         </nav>
       </div>
@@ -67,6 +131,8 @@ export function SiteHeader({ onHome }: { onHome: () => void }) {
 }
 
 export function LoadingState() {
+  const { t } = useLanguage();
+
   return (
     <section className="loading-page" aria-busy="true" aria-live="polite">
       <div className="loading-page__intro">
@@ -74,9 +140,9 @@ export function LoadingState() {
           <BrandMark />
         </div>
         <div>
-          <p className="eyebrow">Sedang menyiapkan panduan</p>
-          <h2>Memuat data burung dan pakannya</h2>
-          <p>PetBites sedang menyusun informasi dari database agar siap kamu gunakan.</p>
+          <p className="eyebrow">{t("loading.eyebrow")}</p>
+          <h2>{t("loading.title")}</h2>
+          <p>{t("loading.copy")}</p>
         </div>
       </div>
 
@@ -99,27 +165,33 @@ export function LoadingState() {
 }
 
 export function DatabaseError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const { t } = useLanguage();
+
   return (
     <section className="error-page">
       <Card className="error-card">
         <CardHeader>
           <div className="error-card__icon">
-            <Database className="h-6 w-6" />
+            <Database className="h-6 w-6" aria-hidden="true" />
           </div>
-          <CardTitle>Data belum bisa dimuat</CardTitle>
+          <CardTitle>{t("error.title")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           <Alert variant="destructive">
-            <AlertTitle>Koneksi Supabase bermasalah</AlertTitle>
-            <AlertDescription>{message}</AlertDescription>
+            <AlertTitle>{t("error.connectionTitle")}</AlertTitle>
+            <AlertDescription>{t("error.copy")}</AlertDescription>
           </Alert>
-          <p className="text-sm leading-6 text-muted-foreground">
-            Periksa koneksi internet dan isi <code>.env.local</code>. Database tidak diubah oleh
-            tombol di bawah; PetBites hanya mencoba membaca ulang data.
-          </p>
+
+          {import.meta.env.DEV && (
+            <details className="error-card__details">
+              <summary>{t("error.technicalDetails")}</summary>
+              <code>{message}</code>
+            </details>
+          )}
+
           <Button type="button" onClick={onRetry} className="gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Coba muat ulang
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            {t("error.retry")}
           </Button>
         </CardContent>
       </Card>
@@ -128,6 +200,8 @@ export function DatabaseError({ message, onRetry }: { message: string; onRetry: 
 }
 
 export function SiteFooter() {
+  const { t } = useLanguage();
+
   return (
     <footer className="site-footer">
       <div className="site-footer__inner">
@@ -135,14 +209,16 @@ export function SiteFooter() {
           <BrandMark compact />
           <span>
             <strong>PetBites</strong>
-            <small>Dibuat untuk pemilik burung Indonesia.</small>
+            <small>{t("footer.tagline")}</small>
           </span>
         </div>
-        <p>
-          Informasi bersifat panduan umum. Untuk kondisi kesehatan khusus, konsultasikan dengan
-          dokter hewan.
-        </p>
+        <p>{t("footer.disclaimer")}</p>
       </div>
     </footer>
   );
+}
+
+function updateThemeColor(dark: boolean) {
+  const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (themeColor) themeColor.content = dark ? "#17241b" : "#f4f2e8";
 }

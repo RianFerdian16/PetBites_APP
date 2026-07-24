@@ -32,6 +32,8 @@ import type {
   Safety,
 } from "@/lib/birds-data";
 
+import { useLanguage } from "./language";
+
 const featureIcons: Record<FeatureId, typeof Search> = {
   food: Wheat,
   toxic: ShieldCheck,
@@ -48,12 +50,15 @@ export function BirdDashboard({
   features: AppFeature[];
   onBack: () => void;
 }) {
+  const { t, birdName, birdDescription, featureText } = useLanguage();
+  const localizedBirdName = birdName(bird.id, bird.name);
+
   return (
     <div className="dashboard-page">
       <div className="dashboard-page__back">
         <Button type="button" variant="ghost" onClick={onBack} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
-          Kembali ke daftar burung
+          {t("dashboard.back")}
         </Button>
       </div>
 
@@ -62,34 +67,37 @@ export function BirdDashboard({
           {bird.imageUrl ? (
             <img
               src={bird.imageUrl}
-              alt={`Burung ${bird.name}`}
+              alt={t("bird.alt", { name: localizedBirdName })}
+              loading="eager"
               decoding="async"
+              fetchPriority="high"
               width="720"
               height="520"
+              sizes="(max-width: 560px) 76px, (max-width: 800px) 104px, 144px"
             />
           ) : (
-            <span role="img" aria-label={bird.name}>
+            <span role="img" aria-label={localizedBirdName}>
               {bird.emoji}
             </span>
           )}
         </div>
         <div className="bird-profile__copy">
-          <p className="eyebrow">Panduan nutrisi</p>
-          <h1>{bird.name}</h1>
+          <p className="eyebrow">{t("dashboard.nutritionGuide")}</p>
+          <h1>{localizedBirdName}</h1>
           <p className="bird-profile__scientific">{bird.scientific}</p>
-          <p className="bird-profile__description">{bird.description}</p>
+          <p className="bird-profile__description">{birdDescription(bird.id, bird.description)}</p>
         </div>
         <dl className="bird-profile__stats">
           <div>
-            <dt>Pakan</dt>
+            <dt>{t("dashboard.food")}</dt>
             <dd>{bird.foods.length}</dd>
           </div>
           <div>
-            <dt>Toxic check</dt>
+            <dt>{t("dashboard.toxicCheck")}</dt>
             <dd>{bird.toxic.length}</dd>
           </div>
           <div>
-            <dt>Resep</dt>
+            <dt>{t("dashboard.recipes")}</dt>
             <dd>{bird.recipes.length}</dd>
           </div>
         </dl>
@@ -98,7 +106,7 @@ export function BirdDashboard({
       {features.length > 0 ? (
         <Tabs defaultValue={features[0].id} className="dashboard-tabs">
           <div className="dashboard-tabs__bar">
-            <TabsList className="dashboard-tabs__list" aria-label="Fitur panduan nutrisi">
+            <TabsList className="dashboard-tabs__list" aria-label={t("dashboard.tabsLabel")}>
               {features.map((feature) => {
                 const Icon = featureIcons[feature.id];
                 return (
@@ -108,7 +116,7 @@ export function BirdDashboard({
                     className="dashboard-tabs__trigger"
                   >
                     <Icon className="h-4 w-4" />
-                    <span>{feature.shortLabel}</span>
+                    <span>{featureText(feature, "shortLabel")}</span>
                   </TabsTrigger>
                 );
               })}
@@ -124,10 +132,8 @@ export function BirdDashboard({
         </Tabs>
       ) : (
         <Alert>
-          <AlertTitle>Belum ada fitur aktif</AlertTitle>
-          <AlertDescription>
-            Aktifkan data pada tabel <code>app_features</code> di Supabase.
-          </AlertDescription>
+          <AlertTitle>{t("dashboard.noFeaturesTitle")}</AlertTitle>
+          <AlertDescription>{t("dashboard.noFeaturesCopy")}</AlertDescription>
         </Alert>
       )}
     </div>
@@ -135,6 +141,7 @@ export function BirdDashboard({
 }
 
 function FeatureIntro({ feature }: { feature: AppFeature }) {
+  const { featureText } = useLanguage();
   const Icon = featureIcons[feature.id];
   return (
     <header className="feature-intro">
@@ -142,9 +149,9 @@ function FeatureIntro({ feature }: { feature: AppFeature }) {
         <Icon className="h-5 w-5" />
       </span>
       <div>
-        <p className="eyebrow">{feature.shortLabel}</p>
-        <h2>{feature.label}</h2>
-        <p>{feature.description}</p>
+        <p className="eyebrow">{featureText(feature, "shortLabel")}</p>
+        <h2>{featureText(feature, "label")}</h2>
+        <p>{featureText(feature, "description")}</p>
       </div>
     </header>
   );
@@ -166,39 +173,47 @@ function FeatureContent({ featureId, bird }: { featureId: FeatureId; bird: Bird 
 function FoodFinder({ bird }: { bird: Bird }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<"all" | FoodItem["category"]>("all");
+  const { t, contentText } = useLanguage();
 
   const filteredFoods = useMemo(() => {
     const normalizedQuery = normalize(query);
     return bird.foods.filter((food) => {
       const matchesCategory = category === "all" || food.category === category;
+      const originalSearchText = `${food.name} ${food.benefits.join(" ")} ${food.note ?? ""}`;
+      const localizedSearchText = `${contentText(food.name)} ${food.benefits
+        .map(contentText)
+        .join(" ")} ${food.note ? contentText(food.note) : ""}`;
       const matchesQuery =
         !normalizedQuery ||
-        normalize(`${food.name} ${food.benefits.join(" ")} ${food.note ?? ""}`).includes(
-          normalizedQuery,
-        );
+        normalize(`${originalSearchText} ${localizedSearchText}`).includes(normalizedQuery);
       return matchesCategory && matchesQuery;
     });
-  }, [bird.foods, category, query]);
+  }, [bird.foods, category, contentText, query]);
+
+  const categoryOptions = [
+    { value: "all" as const, label: t("food.all") },
+    { value: "main" as const, label: t("food.main") },
+    { value: "extra" as const, label: t("food.extra") },
+  ];
 
   return (
     <section className="tool-panel">
       <div className="tool-panel__controls">
         <label className="tool-search">
           <Search className="h-4 w-4" aria-hidden="true" />
-          <span className="sr-only">Cari pakan</span>
+          <span className="sr-only">{t("food.searchLabel")}</span>
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Cari nama pakan atau manfaatnya..."
+            type="search"
+            placeholder={t("food.searchPlaceholder")}
             autoComplete="off"
+            enterKeyHint="search"
+            spellCheck={false}
           />
         </label>
-        <div className="segment-control" aria-label="Filter kategori pakan">
-          {[
-            { value: "all" as const, label: "Semua" },
-            { value: "main" as const, label: "Utama" },
-            { value: "extra" as const, label: "Tambahan" },
-          ].map((option) => (
+        <div className="segment-control" aria-label={t("food.filterLabel")}>
+          {categoryOptions.map((option) => (
             <button
               key={option.value}
               type="button"
@@ -213,7 +228,7 @@ function FoodFinder({ bird }: { bird: Bird }) {
       </div>
 
       <p className="tool-panel__result-count" role="status">
-        Menampilkan {filteredFoods.length} dari {bird.foods.length} pakan
+        {t("food.resultCount", { shown: filteredFoods.length, total: bird.foods.length })}
       </p>
 
       {filteredFoods.length > 0 ? (
@@ -230,9 +245,9 @@ function FoodFinder({ bird }: { bird: Bird }) {
                 </span>
                 <div>
                   <Badge variant="outline">
-                    {food.category === "main" ? "Pakan utama" : "Pakan tambahan"}
+                    {food.category === "main" ? t("food.mainBadge") : t("food.extraBadge")}
                   </Badge>
-                  <h3>{food.name}</h3>
+                  <h3>{contentText(food.name)}</h3>
                 </div>
               </div>
               {food.benefits.length > 0 && (
@@ -240,21 +255,21 @@ function FoodFinder({ bird }: { bird: Bird }) {
                   {food.benefits.map((benefit) => (
                     <li key={benefit}>
                       <Check className="h-3.5 w-3.5" />
-                      {benefit}
+                      {contentText(benefit)}
                     </li>
                   ))}
                 </ul>
               )}
-              {food.note && <p className="food-card__note">{food.note}</p>}
+              {food.note && <p className="food-card__note">{contentText(food.note)}</p>}
             </article>
           ))}
         </div>
       ) : (
         <EmptyToolState
           icon={<Search className="h-5 w-5" />}
-          title="Pakan tidak ditemukan"
-          description="Coba kata kunci lain atau hapus filter kategori."
-          actionLabel="Reset pencarian"
+          title={t("food.emptyTitle")}
+          description={t("food.emptyCopy")}
+          actionLabel={t("food.reset")}
           onAction={() => {
             setQuery("");
             setCategory("all");
@@ -267,23 +282,33 @@ function FoodFinder({ bird }: { bird: Bird }) {
 
 function ToxicChecker({ bird }: { bird: Bird }) {
   const [query, setQuery] = useState("");
+  const { t, contentText } = useLanguage();
   const normalizedQuery = normalize(query);
 
   const exactMatch = useMemo(() => {
     if (!normalizedQuery) return null;
     return (
-      bird.toxic.find((entry) => normalize(entry.name) === normalizedQuery) ??
-      bird.toxic.find((entry) => normalize(entry.name).includes(normalizedQuery)) ??
+      bird.toxic.find((entry) => {
+        const names = `${entry.name} ${contentText(entry.name)}`;
+        return normalize(names)
+          .split(/\s{2,}/)
+          .some((name) => name === normalizedQuery);
+      }) ??
+      bird.toxic.find((entry) =>
+        normalize(`${entry.name} ${contentText(entry.name)}`).includes(normalizedQuery),
+      ) ??
       null
     );
-  }, [bird.toxic, normalizedQuery]);
+  }, [bird.toxic, contentText, normalizedQuery]);
 
   const suggestions = useMemo(() => {
     if (!normalizedQuery) return bird.toxic.slice(0, 6);
     return bird.toxic
-      .filter((entry) => normalize(entry.name).includes(normalizedQuery))
+      .filter((entry) =>
+        normalize(`${entry.name} ${contentText(entry.name)}`).includes(normalizedQuery),
+      )
       .slice(0, 6);
-  }, [bird.toxic, normalizedQuery]);
+  }, [bird.toxic, contentText, normalizedQuery]);
 
   const toxicEntries = bird.toxic.filter((entry) => entry.status === "toxic");
 
@@ -293,24 +318,27 @@ function ToxicChecker({ bird }: { bird: Bird }) {
         <div className="toxic-search-card__copy">
           <ShieldCheck className="h-6 w-6" />
           <div>
-            <h3>Cek sebelum diberikan</h3>
-            <p>Ketik nama makanan atau bahan dapur untuk melihat status keamanannya.</p>
+            <h3>{t("toxic.checkFirst")}</h3>
+            <p>{t("toxic.checkCopy")}</p>
           </div>
         </div>
         <label className="tool-search tool-search--large">
           <Search className="h-5 w-5" aria-hidden="true" />
-          <span className="sr-only">Cari keamanan bahan makanan</span>
+          <span className="sr-only">{t("toxic.searchLabel")}</span>
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Contoh: alpukat, apel, cokelat..."
+            type="search"
+            placeholder={t("toxic.searchPlaceholder")}
             autoComplete="off"
+            enterKeyHint="search"
+            spellCheck={false}
           />
         </label>
-        <div className="suggestion-row" aria-label="Saran pencarian">
+        <div className="suggestion-row" aria-label={t("toxic.suggestions")}>
           {suggestions.map((entry) => (
-            <button key={entry.id} type="button" onClick={() => setQuery(entry.name)}>
-              {entry.name}
+            <button key={entry.id} type="button" onClick={() => setQuery(contentText(entry.name))}>
+              {contentText(entry.name)}
             </button>
           ))}
         </div>
@@ -320,7 +348,7 @@ function ToxicChecker({ bird }: { bird: Bird }) {
         {!normalizedQuery ? (
           <div className="toxic-result__placeholder">
             <Search className="h-5 w-5" />
-            <p>Hasil pemeriksaan akan muncul di sini.</p>
+            <p>{t("toxic.placeholder")}</p>
           </div>
         ) : exactMatch ? (
           <SafetyResult entry={exactMatch} />
@@ -328,11 +356,8 @@ function ToxicChecker({ bird }: { bird: Bird }) {
           <div className="unknown-result">
             <AlertTriangle className="h-6 w-6" />
             <div>
-              <h3>Belum ada di database</h3>
-              <p>
-                “{query.trim()}” belum terdaftar. Jangan menganggap bahan tersebut aman sebelum
-                mendapatkan rujukan yang tepercaya.
-              </p>
+              <h3>{t("toxic.unknownTitle")}</h3>
+              <p>{t("toxic.unknownCopy", { query: query.trim() })}</p>
             </div>
           </div>
         )}
@@ -341,18 +366,20 @@ function ToxicChecker({ bird }: { bird: Bird }) {
       <div className="avoid-list">
         <div className="avoid-list__heading">
           <div>
-            <p className="eyebrow">Perlu diingat</p>
-            <h3>Bahan yang umum ditemukan di dapur</h3>
+            <p className="eyebrow">{t("toxic.remember")}</p>
+            <h3>{t("toxic.kitchenItems")}</h3>
           </div>
-          <Badge variant="destructive">{toxicEntries.length} bahan berbahaya</Badge>
+          <Badge variant="destructive">
+            {t("toxic.dangerousCount", { count: toxicEntries.length })}
+          </Badge>
         </div>
         <div className="avoid-list__grid">
           {toxicEntries.map((entry) => (
             <article key={entry.id}>
               <ShieldAlert className="h-4 w-4" />
               <div>
-                <h4>{entry.name}</h4>
-                <p>{entry.explanation}</p>
+                <h4>{contentText(entry.name)}</h4>
+                <p>{contentText(entry.explanation)}</p>
               </div>
             </article>
           ))}
@@ -363,25 +390,26 @@ function ToxicChecker({ bird }: { bird: Bird }) {
 }
 
 function SafetyResult({ entry }: { entry: Bird["toxic"][number] }) {
+  const { t, contentText } = useLanguage();
   const config: Record<
     Safety,
     { label: string; description: string; icon: typeof ShieldCheck; className: string }
   > = {
     safe: {
-      label: "Aman",
-      description: "Bisa diberikan sesuai catatan dan porsi yang wajar.",
+      label: t("safety.safe"),
+      description: t("safety.safeCopy"),
       icon: ShieldCheck,
       className: "safety-result--safe",
     },
     caution: {
-      label: "Perlu dibatasi",
-      description: "Perhatikan jumlah, frekuensi, atau cara penyajiannya.",
+      label: t("safety.caution"),
+      description: t("safety.cautionCopy"),
       icon: AlertTriangle,
       className: "safety-result--caution",
     },
     toxic: {
-      label: "Berbahaya",
-      description: "Jangan diberikan kepada burung.",
+      label: t("safety.toxic"),
+      description: t("safety.toxicCopy"),
       icon: ShieldAlert,
       className: "safety-result--toxic",
     },
@@ -396,13 +424,13 @@ function SafetyResult({ entry }: { entry: Bird["toxic"][number] }) {
         <Icon className="h-7 w-7" />
       </span>
       <div>
-        <p className="safety-result__eyebrow">Hasil pemeriksaan</p>
+        <p className="safety-result__eyebrow">{t("safety.result")}</p>
         <div className="safety-result__title-row">
-          <h3>{entry.name}</h3>
+          <h3>{contentText(entry.name)}</h3>
           <Badge>{state.label}</Badge>
         </div>
         <p className="safety-result__summary">{state.description}</p>
-        <p className="safety-result__detail">{entry.explanation}</p>
+        <p className="safety-result__detail">{contentText(entry.explanation)}</p>
       </div>
     </article>
   );
@@ -411,23 +439,31 @@ function SafetyResult({ entry }: { entry: Bird["toxic"][number] }) {
 function PortionCalculator({ bird }: { bird: Bird }) {
   const [condition, setCondition] = useState<BirdCondition>("Harian");
   const [size, setSize] = useState<BirdSize>("Standar");
+  const { t, birdName, contentText } = useLanguage();
 
   const result = bird.portions.find(
     (portion) => portion.condition === condition && portion.size === size,
   );
 
   const conditions: Array<{ id: BirdCondition; label: string; description: string }> = [
-    { id: "Harian", label: "Harian", description: "Kondisi normal" },
-    { id: "Mabung", label: "Mabung", description: "Rontok dan tumbuh bulu" },
-    { id: "Ternak", label: "Masa ternak", description: "Breeding dan produksi" },
+    { id: "Harian", label: t("portion.daily"), description: t("portion.dailyCopy") },
+    { id: "Mabung", label: t("portion.molting"), description: t("portion.moltingCopy") },
+    { id: "Ternak", label: t("portion.breeding"), description: t("portion.breedingCopy") },
   ];
-  const sizes: BirdSize[] = ["Kecil", "Standar", "Besar"];
+  const sizes: Array<{ id: BirdSize; label: string }> = [
+    { id: "Kecil", label: t("portion.small") },
+    { id: "Standar", label: t("portion.standard") },
+    { id: "Besar", label: t("portion.large") },
+  ];
+  const localizedBirdName = birdName(bird.id, bird.name);
+  const conditionLabel = conditions.find((option) => option.id === condition)?.label ?? condition;
+  const sizeLabel = sizes.find((option) => option.id === size)?.label ?? size;
 
   return (
     <section className="portion-layout">
       <div className="portion-form">
         <fieldset>
-          <legend>Kondisi burung</legend>
+          <legend>{t("portion.condition")}</legend>
           <div className="condition-options">
             {conditions.map((option) => (
               <button
@@ -448,28 +484,25 @@ function PortionCalculator({ bird }: { bird: Bird }) {
         </fieldset>
 
         <fieldset>
-          <legend>Ukuran burung</legend>
+          <legend>{t("portion.size")}</legend>
           <div className="size-options">
             {sizes.map((option) => (
               <button
-                key={option}
+                key={option.id}
                 type="button"
-                className={size === option ? "is-active" : ""}
-                onClick={() => setSize(option)}
-                aria-pressed={size === option}
+                className={size === option.id ? "is-active" : ""}
+                onClick={() => setSize(option.id)}
+                aria-pressed={size === option.id}
               >
-                {option}
+                {option.label}
               </button>
             ))}
           </div>
         </fieldset>
 
         <Alert>
-          <AlertTitle>Gunakan sebagai estimasi awal</AlertTitle>
-          <AlertDescription>
-            Pantau nafsu makan, berat badan, dan kondisi kotoran. Kebutuhan setiap burung dapat
-            berbeda.
-          </AlertDescription>
+          <AlertTitle>{t("portion.estimateTitle")}</AlertTitle>
+          <AlertDescription>{t("portion.estimateCopy")}</AlertDescription>
         </Alert>
       </div>
 
@@ -477,9 +510,9 @@ function PortionCalculator({ bird }: { bird: Bird }) {
         <div className="portion-result" aria-live="polite">
           <div className="portion-result__header">
             <div>
-              <p className="eyebrow">Perkiraan porsi</p>
+              <p className="eyebrow">{t("portion.estimated")}</p>
               <h3>
-                {bird.name} · {condition} · {size}
+                {localizedBirdName} · {conditionLabel} · {sizeLabel}
               </h3>
             </div>
             <Utensils className="h-6 w-6" />
@@ -487,15 +520,15 @@ function PortionCalculator({ bird }: { bird: Bird }) {
 
           <div className="portion-result__numbers">
             <div>
-              <span>Total harian</span>
+              <span>{t("portion.dailyTotal")}</span>
               <strong>
                 {result.grams}
-                <small>gram</small>
+                <small>{t("portion.grams")}</small>
               </strong>
             </div>
             <div>
-              <span>Perkiraan volume</span>
-              <strong className="portion-result__teaspoon">{result.teaspoon}</strong>
+              <span>{t("portion.volume")}</span>
+              <strong className="portion-result__teaspoon">{contentText(result.teaspoon)}</strong>
             </div>
           </div>
 
@@ -505,8 +538,8 @@ function PortionCalculator({ bird }: { bird: Bird }) {
                 <Sun className="h-5 w-5" />
               </span>
               <div>
-                <p>Pagi</p>
-                <strong>{result.morning}</strong>
+                <p>{t("portion.morning")}</p>
+                <strong>{contentText(result.morning)}</strong>
               </div>
             </article>
             <span className="feeding-timeline__line" aria-hidden="true" />
@@ -515,8 +548,8 @@ function PortionCalculator({ bird }: { bird: Bird }) {
                 <Moon className="h-5 w-5" />
               </span>
               <div>
-                <p>Sore</p>
-                <strong>{result.evening}</strong>
+                <p>{t("portion.evening")}</p>
+                <strong>{contentText(result.evening)}</strong>
               </div>
             </article>
           </div>
@@ -524,8 +557,12 @@ function PortionCalculator({ bird }: { bird: Bird }) {
       ) : (
         <EmptyToolState
           icon={<AlertTriangle className="h-5 w-5" />}
-          title="Aturan porsi belum tersedia"
-          description={`Belum ada data untuk ${bird.name}, ukuran ${size}, kondisi ${condition}.`}
+          title={t("portion.unavailableTitle")}
+          description={t("portion.unavailableCopy", {
+            bird: localizedBirdName,
+            size: sizeLabel,
+            condition: conditionLabel,
+          })}
         />
       )}
     </section>
@@ -533,12 +570,15 @@ function PortionCalculator({ bird }: { bird: Bird }) {
 }
 
 function Recipes({ bird }: { bird: Bird }) {
+  const { t, birdName, contentText } = useLanguage();
+  const localizedBirdName = birdName(bird.id, bird.name);
+
   if (bird.recipes.length === 0) {
     return (
       <EmptyToolState
         icon={<ChefHat className="h-5 w-5" />}
-        title="Resep belum tersedia"
-        description={`Belum ada resep aktif untuk ${bird.name}.`}
+        title={t("recipe.unavailableTitle")}
+        description={t("recipe.unavailableCopy", { bird: localizedBirdName })}
       />
     );
   }
@@ -550,8 +590,8 @@ function Recipes({ bird }: { bird: Bird }) {
           <summary>
             <span className="recipe-card__number">{String(index + 1).padStart(2, "0")}</span>
             <span className="recipe-card__heading">
-              <strong>{recipe.title}</strong>
-              <small>{recipe.purpose}</small>
+              <strong>{contentText(recipe.title)}</strong>
+              <small>{contentText(recipe.purpose)}</small>
             </span>
             <ChevronDown className="recipe-card__chevron h-5 w-5" />
           </summary>
@@ -560,13 +600,13 @@ function Recipes({ bird }: { bird: Bird }) {
             <div className="recipe-card__section">
               <h4>
                 <Utensils className="h-4 w-4" />
-                Bahan
+                {t("recipe.ingredients")}
               </h4>
               <ul>
                 {recipe.ingredients.map((ingredient) => (
                   <li key={ingredient}>
                     <Check className="h-4 w-4" />
-                    {ingredient}
+                    {contentText(ingredient)}
                   </li>
                 ))}
               </ul>
@@ -575,13 +615,13 @@ function Recipes({ bird }: { bird: Bird }) {
             <div className="recipe-card__section">
               <h4>
                 <Clock3 className="h-4 w-4" />
-                Cara membuat
+                {t("recipe.steps")}
               </h4>
               <ol>
                 {recipe.steps.map((step, stepIndex) => (
                   <li key={`${recipe.id}-${stepIndex}`}>
                     <span>{stepIndex + 1}</span>
-                    {step}
+                    {contentText(step)}
                   </li>
                 ))}
               </ol>
@@ -624,6 +664,6 @@ function normalize(value: string) {
   return value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("id-ID")
+    .toLocaleLowerCase()
     .trim();
 }

@@ -1,4 +1,6 @@
-import { Bird as BirdIcon, Leaf, Sparkles } from "lucide-react";
+import { Leaf, Sparkles } from "lucide-react";
+
+import { useLanguage } from "./language";
 
 export function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
@@ -12,6 +14,8 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
 }
 
 export function HeroBirdScene() {
+  const { t } = useLanguage();
+
   return (
     <div className="hero-bird-scene" aria-hidden="true">
       <svg viewBox="0 0 560 440" role="presentation">
@@ -90,11 +94,11 @@ export function HeroBirdScene() {
 
       <div className="hero-bird-scene__note hero-bird-scene__note--top">
         <Sparkles className="h-4 w-4" />
-        Data terstruktur
+        {t("hero.structuredData")}
       </div>
       <div className="hero-bird-scene__note hero-bird-scene__note--bottom">
         <Leaf className="h-4 w-4" />
-        Praktis dipakai
+        {t("hero.practical")}
       </div>
     </div>
   );
@@ -103,11 +107,26 @@ export function HeroBirdScene() {
 export function FlyingBird() {
   return (
     <div className="flying-bird" aria-hidden="true">
-      <div className="flying-bird__trail" />
-      <div className="flying-bird__body">
-        <BirdIcon className="flying-bird__icon" strokeWidth={1.8} />
-        <span className="flying-bird__wing flying-bird__wing--left" />
-        <span className="flying-bird__wing flying-bird__wing--right" />
+      <div className="flying-bird__sprite">
+        <img
+          className="flying-bird__image"
+          src="/welcome/flying-bird.webp"
+          alt=""
+          width={590}
+          height={330}
+          decoding="async"
+          fetchPriority="high"
+          draggable={false}
+        />
+        <img
+          className="flying-bird__wing-image"
+          src="/welcome/flying-bird-wing.webp"
+          alt=""
+          width={590}
+          height={330}
+          decoding="async"
+          draggable={false}
+        />
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { BirdDashboard } from "@/features/petbites/dashboard";
 import { HomePage } from "@/features/petbites/home";
+import { useLanguage } from "@/features/petbites/language";
 import {
   DatabaseError,
   LoadingState,
@@ -14,6 +15,8 @@ import { WelcomeScreen } from "@/features/petbites/welcome-screen";
 import type { Bird } from "@/lib/birds-data";
 
 const SELECTED_BIRD_KEY = "petbites:selected-bird";
+
+type HomeSectionId = "cara-kerja" | "pilih-burung";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -40,6 +43,7 @@ export const Route = createFileRoute("/")({
 function PetBites() {
   const [selectedBirdId, setSelectedBirdId] = useState<string | null>(null);
   const { status, content, error, retry } = usePetBitesContent();
+  const { t } = useLanguage();
 
   useEffect(() => {
     try {
@@ -63,7 +67,7 @@ function PetBites() {
     scrollToTop();
   }
 
-  function returnHome() {
+  function clearSelectedBird() {
     try {
       window.sessionStorage.removeItem(SELECTED_BIRD_KEY);
     } catch {
@@ -71,15 +75,38 @@ function PetBites() {
     }
 
     setSelectedBirdId(null);
+  }
+
+  function returnHome() {
+    clearSelectedBird();
     scrollToTop();
+  }
+
+  function navigateToHomeSection(sectionId: HomeSectionId) {
+    clearSelectedBird();
+
+    // Two frames allow React to restore the homepage before the target is measured.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const target = document.getElementById(sectionId);
+        if (!target) return;
+
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
+      });
+    });
   }
 
   return (
     <div className="app-shell">
-      <WelcomeScreen />
-      <SiteHeader onHome={returnHome} />
+      <a className="skip-link" href="#main-content">
+        {t("accessibility.skipToContent")}
+      </a>
 
-      <main className="site-main">
+      <WelcomeScreen />
+      <SiteHeader onHome={returnHome} onNavigateSection={navigateToHomeSection} />
+
+      <main className="site-main" id="main-content" tabIndex={-1}>
         {status === "loading" && <LoadingState />}
         {status === "error" && error && <DatabaseError message={error} onRetry={retry} />}
         {status === "ready" && content && selectedBird && (
