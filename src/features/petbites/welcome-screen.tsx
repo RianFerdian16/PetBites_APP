@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { BrandMark, FlyingBird } from "./illustrations";
 import { useLanguage } from "./language";
 
-const WELCOME_SESSION_KEY = "petbites:welcome-seen:v6-production";
+const WELCOME_SESSION_KEY = "petbites:welcome-seen:v8-smoother-bird-wind";
 const WELCOME_DURATION_MS = 1800;
 const REDUCED_MOTION_DURATION_MS = 520;
 const EXIT_DURATION_MS = 280;

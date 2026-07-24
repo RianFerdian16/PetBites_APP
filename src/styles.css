@@ -527,19 +527,70 @@
   z-index: 3;
   top: 11.5%;
   left: -15.5rem;
-  width: clamp(10rem, 14vw, 12.5rem);
+  width: clamp(8.1rem, 11.2vw, 9.6rem);
   aspect-ratio: 59 / 33;
   pointer-events: none;
   user-select: none;
-  animation: bird-flight 1.65s cubic-bezier(0.34, 0.18, 0.48, 0.92) 80ms both;
-  will-change: transform;
+  animation: bird-flight 2.15s cubic-bezier(0.23, 0.72, 0.24, 1) 90ms both;
+  will-change: transform, opacity;
 }
 
 .flying-bird__sprite {
   position: absolute;
   inset: 0;
-  animation: bird-body-bob 360ms ease-in-out infinite alternate;
+  animation: bird-body-bob 520ms ease-in-out infinite alternate;
   will-change: transform;
+}
+
+.flying-bird__trails {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  filter: blur(0.2px);
+}
+
+.flying-bird__trail {
+  position: absolute;
+  left: -44%;
+  height: 0.26rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgb(255 205 130 / 0.65), rgb(255 255 255 / 0.05));
+  transform-origin: left center;
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: bird-trail-flow 640ms ease-out infinite;
+}
+
+.flying-bird__trail::after {
+  content: "";
+  position: absolute;
+  right: -0.38rem;
+  top: 50%;
+  width: 0.6rem;
+  height: 0.08rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.42);
+  transform: translateY(-50%) rotate(-12deg);
+}
+
+.flying-bird__trail--one {
+  top: 53%;
+  width: 2.8rem;
+  animation-delay: 0ms;
+}
+
+.flying-bird__trail--two {
+  top: 67%;
+  width: 2.1rem;
+  animation-delay: 160ms;
+  opacity: 0.84;
+}
+
+.flying-bird__trail--three {
+  top: 78%;
+  width: 1.55rem;
+  animation-delay: 320ms;
+  opacity: 0.72;
 }
 
 .flying-bird__image,
@@ -559,7 +610,7 @@
 
 .flying-bird__wing-image {
   transform-origin: 72% 40%;
-  animation: photo-wing-flap 190ms cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  animation: photo-wing-flap 220ms cubic-bezier(0.42, 0, 0.58, 1) infinite alternate;
   will-change: transform;
 }
 
@@ -2305,31 +2356,61 @@
 
 @keyframes bird-flight {
   0% {
-    transform: translate3d(0, 3rem, 0) rotate(-8deg) scale(0.78);
+    opacity: 0;
+    transform: translate3d(0, 2.9rem, 0) rotate(-9deg) scale(0.72);
   }
-  42% {
-    transform: translate3d(48vw, -1.1rem, 0) rotate(2deg) scale(1);
+  12% {
+    opacity: 1;
+    transform: translate3d(11vw, 1.35rem, 0) rotate(-5deg) scale(0.8);
+  }
+  34% {
+    transform: translate3d(36vw, -0.35rem, 0) rotate(0deg) scale(0.94);
+  }
+  58% {
+    transform: translate3d(58vw, -0.9rem, 0) rotate(3deg) scale(1);
+  }
+  82% {
+    transform: translate3d(81vw, -0.15rem, 0) rotate(-1.5deg) scale(0.92);
   }
   100% {
-    transform: translate3d(calc(100vw + 11rem), 1rem, 0) rotate(-3deg) scale(0.86);
+    opacity: 0.98;
+    transform: translate3d(calc(100vw + 10rem), 0.8rem, 0) rotate(-4deg) scale(0.82);
   }
 }
 
 @keyframes bird-body-bob {
   from {
-    transform: translate3d(0, 1px, 0) rotate(-0.8deg);
+    transform: translate3d(0, 1px, 0) rotate(-1deg);
   }
   to {
-    transform: translate3d(0, -2px, 0) rotate(0.8deg);
+    transform: translate3d(0, -3px, 0) rotate(1deg);
   }
 }
 
 @keyframes photo-wing-flap {
   from {
-    transform: rotate(-7deg) translateY(2px) scaleY(0.9);
+    transform: rotate(-9deg) translateY(2px) scaleY(0.88);
   }
   to {
-    transform: rotate(8deg) translateY(-1px) scaleY(1.03);
+    transform: rotate(11deg) translateY(-2px) scaleY(1.05);
+  }
+}
+
+@keyframes bird-trail-flow {
+  0% {
+    opacity: 0;
+    transform: translate3d(0.6rem, 0, 0) scaleX(0.42);
+  }
+  18% {
+    opacity: 0.72;
+  }
+  72% {
+    opacity: 0.38;
+    transform: translate3d(-0.2rem, 0, 0) scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-0.55rem, 0, 0) scaleX(1.12);
   }
 }
 
@@ -2749,8 +2830,8 @@
 
   .flying-bird {
     top: 11%;
-    left: -10.5rem;
-    width: 8.9rem;
+    left: -9.8rem;
+    width: 7.85rem;
   }
 }
 
@@ -2772,7 +2853,7 @@
     top: 10%;
     right: clamp(1rem, 6vw, 5rem);
     left: auto;
-    width: clamp(7.5rem, 14vw, 10.5rem);
+    width: clamp(6.2rem, 11vw, 8rem);
     opacity: 0.96;
     animation: none !important;
     transform: none !important;
