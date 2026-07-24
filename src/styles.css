@@ -4123,3 +4123,158 @@ img {
     background-image: none;
   }
 }
+
+
+/* Production-safe welcome flight: decoded assets, compositor-only motion, no expensive moving filters */
+.flying-bird {
+  left: -10rem;
+  width: clamp(7.2rem, 9.8vw, 8.7rem);
+  contain: layout paint style;
+  isolation: isolate;
+  opacity: 0;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  animation: bird-cross-screen 2.2s linear 80ms both;
+  will-change: transform, opacity;
+}
+
+.flying-bird__motion {
+  position: absolute;
+  inset: 0;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  animation: bird-flight-arc 2.2s cubic-bezier(0.37, 0, 0.63, 1) 80ms both;
+  will-change: transform;
+}
+
+.flying-bird__sprite {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  animation: bird-body-bob 480ms ease-in-out infinite alternate;
+}
+
+.flying-bird__image {
+  filter: none;
+}
+
+.flying-bird__wing-image {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  animation-duration: 230ms;
+}
+
+.flying-bird__trails {
+  filter: none;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
+.flying-bird__trail {
+  height: 0.2rem;
+  background: linear-gradient(90deg, rgb(246 174 88 / 0.68), rgb(255 238 195 / 0.18), transparent);
+  animation: bird-trail-flow 720ms ease-out infinite;
+  will-change: transform, opacity;
+}
+
+.flying-bird__trail::after {
+  display: none;
+}
+
+.welcome-screen:not(.welcome-screen--ready) .flying-bird,
+.welcome-screen:not(.welcome-screen--ready) .flying-bird__motion,
+.welcome-screen:not(.welcome-screen--ready) .flying-bird__sprite,
+.welcome-screen:not(.welcome-screen--ready) .flying-bird__wing-image,
+.welcome-screen:not(.welcome-screen--ready) .flying-bird__trail {
+  animation-play-state: paused;
+}
+
+.welcome-screen:not(.welcome-screen--ready) .flying-bird {
+  visibility: hidden;
+}
+
+.welcome-screen--ready .flying-bird {
+  visibility: visible;
+}
+
+.welcome-screen__content {
+  backdrop-filter: blur(6px) saturate(1.01);
+  -webkit-backdrop-filter: blur(6px) saturate(1.01);
+}
+
+@keyframes bird-cross-screen {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  7% {
+    opacity: 1;
+  }
+  94% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(100vw + 20rem), 0, 0);
+  }
+}
+
+@keyframes bird-flight-arc {
+  0% {
+    transform: translate3d(0, 2.3rem, 0) rotate(-7deg) scale(0.78);
+  }
+  45% {
+    transform: translate3d(0, -0.8rem, 0) rotate(1deg) scale(1);
+  }
+  72% {
+    transform: translate3d(0, -0.25rem, 0) rotate(0deg) scale(0.96);
+  }
+  100% {
+    transform: translate3d(0, 0.7rem, 0) rotate(-3deg) scale(0.86);
+  }
+}
+
+@keyframes bird-trail-flow {
+  0% {
+    opacity: 0;
+    transform: translate3d(0.45rem, 0, 0) scaleX(0.52);
+  }
+  20% {
+    opacity: 0.68;
+  }
+  72% {
+    opacity: 0.34;
+    transform: translate3d(-0.12rem, 0, 0) scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-0.42rem, 0, 0) scaleX(1.08);
+  }
+}
+
+@media (max-width: 768px) {
+  .flying-bird {
+    left: -8.2rem;
+    width: 6.7rem;
+    animation-duration: 2.05s;
+  }
+
+  .flying-bird__motion {
+    animation-duration: 2.05s;
+  }
+
+  .flying-bird__trail--three {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flying-bird__motion,
+  .flying-bird__trails {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .flying-bird__trails {
+    display: none;
+  }
+}

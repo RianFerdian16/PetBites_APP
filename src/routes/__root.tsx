@@ -124,6 +124,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         media: "(prefers-color-scheme: dark)",
       },
       { rel: "preload", href: "/welcome/flying-bird.webp", as: "image", type: "image/webp" },
+      {
+        rel: "preload",
+        href: "/welcome/flying-bird-wing.webp",
+        as: "image",
+        type: "image/webp",
+      },
     ],
   }),
   shellComponent: RootShell,

@@ -107,31 +107,34 @@ export function HeroBirdScene() {
 export function FlyingBird() {
   return (
     <div className="flying-bird" aria-hidden="true">
-      <div className="flying-bird__trails">
-        <span className="flying-bird__trail flying-bird__trail--one" />
-        <span className="flying-bird__trail flying-bird__trail--two" />
-        <span className="flying-bird__trail flying-bird__trail--three" />
-      </div>
-      <div className="flying-bird__sprite">
-        <img
-          className="flying-bird__image"
-          src="/welcome/flying-bird.webp"
-          alt=""
-          width={590}
-          height={330}
-          decoding="async"
-          fetchPriority="high"
-          draggable={false}
-        />
-        <img
-          className="flying-bird__wing-image"
-          src="/welcome/flying-bird-wing.webp"
-          alt=""
-          width={590}
-          height={330}
-          decoding="async"
-          draggable={false}
-        />
+      <div className="flying-bird__motion">
+        <div className="flying-bird__trails">
+          <span className="flying-bird__trail flying-bird__trail--one" />
+          <span className="flying-bird__trail flying-bird__trail--two" />
+          <span className="flying-bird__trail flying-bird__trail--three" />
+        </div>
+        <div className="flying-bird__sprite">
+          <img
+            className="flying-bird__image"
+            src="/welcome/flying-bird.webp"
+            alt=""
+            width={590}
+            height={330}
+            decoding="async"
+            fetchPriority="high"
+            draggable={false}
+          />
+          <img
+            className="flying-bird__wing-image"
+            src="/welcome/flying-bird-wing.webp"
+            alt=""
+            width={590}
+            height={330}
+            decoding="async"
+            fetchPriority="high"
+            draggable={false}
+          />
+        </div>
       </div>
     </div>
   );
