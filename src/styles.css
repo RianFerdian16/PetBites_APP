@@ -47,10 +47,12 @@
 :root {
   color-scheme: light;
   --radius: 0.9rem;
-  --font-heading: "Aptos Display", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
-  --font-body:
-    "Aptos", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont,
+  --font-heading:
+    "Aptos Display", "Segoe UI Variable Display", "Segoe UI", system-ui,
     sans-serif;
+  --font-body:
+    "Aptos", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
+    BlinkMacSystemFont, sans-serif;
 
   --background: oklch(0.982 0.012 96);
   --foreground: oklch(0.245 0.027 151);
@@ -554,7 +556,11 @@
   left: -44%;
   height: 0.26rem;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgb(255 205 130 / 0.65), rgb(255 255 255 / 0.05));
+  background: linear-gradient(
+    90deg,
+    rgb(255 205 130 / 0.65),
+    rgb(255 255 255 / 0.05)
+  );
   transform-origin: left center;
   opacity: 0;
   will-change: transform, opacity;
@@ -610,7 +616,8 @@
 
 .flying-bird__wing-image {
   transform-origin: 72% 40%;
-  animation: photo-wing-flap 220ms cubic-bezier(0.42, 0, 0.58, 1) infinite alternate;
+  animation: photo-wing-flap 220ms cubic-bezier(0.42, 0, 0.58, 1) infinite
+    alternate;
   will-change: transform;
 }
 
@@ -1093,7 +1100,11 @@
       color-mix(in oklab, var(--amber-soft) 88%, transparent),
       transparent 45%
     ),
-    linear-gradient(135deg, color-mix(in oklab, var(--mint) 78%, var(--card)), var(--cream));
+    linear-gradient(
+      135deg,
+      color-mix(in oklab, var(--mint) 78%, var(--card)),
+      var(--cream)
+    );
 }
 
 .bird-card__media img {
@@ -1411,7 +1422,9 @@
   place-items: center;
   overflow: hidden;
   border-radius: 1.25rem;
-  background: radial-gradient(circle at 75% 25%, var(--amber-soft), transparent 48%), var(--mint);
+  background:
+    radial-gradient(circle at 75% 25%, var(--amber-soft), transparent 48%),
+    var(--mint);
   font-size: 5.2rem;
 }
 
@@ -2041,7 +2054,11 @@
       color-mix(in oklab, var(--amber-soft) 82%, transparent),
       transparent 15rem
     ),
-    linear-gradient(145deg, color-mix(in oklab, var(--mint) 50%, var(--card)), var(--card));
+    linear-gradient(
+      145deg,
+      color-mix(in oklab, var(--mint) 50%, var(--card)),
+      var(--card)
+    );
 }
 
 .portion-result__header {
@@ -2374,7 +2391,8 @@
   }
   100% {
     opacity: 0.98;
-    transform: translate3d(calc(100vw + 10rem), 0.8rem, 0) rotate(-4deg) scale(0.82);
+    transform: translate3d(calc(100vw + 10rem), 0.8rem, 0) rotate(-4deg)
+      scale(0.82);
   }
 }
 
@@ -2416,12 +2434,12 @@
 
 @keyframes leaf-sway {
   from {
-    transform: translateX(-0.15rem) scaleX(var(--leaf-scale-x)) scale(var(--leaf-scale))
-      rotate(var(--leaf-rotation));
+    transform: translateX(-0.15rem) scaleX(var(--leaf-scale-x))
+      scale(var(--leaf-scale)) rotate(var(--leaf-rotation));
   }
   to {
-    transform: translateX(0.15rem) scaleX(var(--leaf-scale-x)) scale(var(--leaf-scale))
-      rotate(calc(var(--leaf-rotation) + 7deg));
+    transform: translateX(0.15rem) scaleX(var(--leaf-scale-x))
+      scale(var(--leaf-scale)) rotate(calc(var(--leaf-rotation) + 7deg));
   }
 }
 
@@ -2899,7 +2917,11 @@ body::after {
 body::before {
   z-index: -2;
   background-image:
-    linear-gradient(180deg, rgb(255 255 255 / 0.08) 0%, rgb(255 255 255 / 0.12) 100%),
+    linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.08) 0%,
+      rgb(255 255 255 / 0.12) 100%
+    ),
     radial-gradient(
       ellipse at center,
       rgb(255 255 255 / 0.01) 0%,
@@ -2930,16 +2952,32 @@ body::before {
 body::after {
   z-index: -1;
   background:
-    radial-gradient(circle at 16% 10%, rgb(196 232 205 / 0.12), transparent 24rem),
-    radial-gradient(circle at 86% 14%, rgb(248 228 182 / 0.1), transparent 22rem),
+    radial-gradient(
+      circle at 16% 10%,
+      rgb(196 232 205 / 0.12),
+      transparent 24rem
+    ),
+    radial-gradient(
+      circle at 86% 14%,
+      rgb(248 228 182 / 0.1),
+      transparent 22rem
+    ),
     linear-gradient(180deg, rgb(255 255 255 / 0.04), rgb(255 255 255 / 0.08));
   opacity: 0.38;
 }
 
 .dark body::after {
   background:
-    radial-gradient(circle at 16% 10%, rgb(92 136 104 / 0.12), transparent 24rem),
-    radial-gradient(circle at 86% 14%, rgb(175 145 88 / 0.08), transparent 22rem),
+    radial-gradient(
+      circle at 16% 10%,
+      rgb(92 136 104 / 0.12),
+      transparent 24rem
+    ),
+    radial-gradient(
+      circle at 86% 14%,
+      rgb(175 145 88 / 0.08),
+      transparent 22rem
+    ),
     linear-gradient(180deg, rgb(0 0 0 / 0.02), rgb(0 0 0 / 0.08));
   opacity: 0.3;
 }
@@ -3009,7 +3047,8 @@ body::after {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(180deg, transparent, rgb(255 255 255 / 0.06)), url("/theme/forest-day.webp");
+    linear-gradient(180deg, transparent, rgb(255 255 255 / 0.06)),
+    url("/theme/forest-day.webp");
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
@@ -3019,7 +3058,8 @@ body::after {
 
 .dark .home-hero::after {
   background-image:
-    linear-gradient(180deg, transparent, rgb(0 0 0 / 0.08)), url("/theme/forest-night.webp");
+    linear-gradient(180deg, transparent, rgb(0 0 0 / 0.08)),
+    url("/theme/forest-night.webp");
   opacity: 0.3;
 }
 
@@ -3053,7 +3093,11 @@ body::after {
       rgb(255 255 255 / 0.18) 35%,
       rgb(255 255 255 / 0.28) 100%
     ),
-    radial-gradient(ellipse at center, rgb(255 255 255 / 0.02) 0%, rgb(255 255 255 / 0.16) 100%),
+    radial-gradient(
+      ellipse at center,
+      rgb(255 255 255 / 0.02) 0%,
+      rgb(255 255 255 / 0.16) 100%
+    ),
     url("/theme/forest-day.webp");
   background-position: center;
   background-size: cover;
@@ -3068,7 +3112,11 @@ body::after {
       rgb(13 20 16 / 0.2) 35%,
       rgb(13 20 16 / 0.3) 100%
     ),
-    radial-gradient(ellipse at center, rgb(0 0 0 / 0.02) 0%, rgb(0 0 0 / 0.18) 100%),
+    radial-gradient(
+      ellipse at center,
+      rgb(0 0 0 / 0.02) 0%,
+      rgb(0 0 0 / 0.18) 100%
+    ),
     url("/theme/forest-night.webp");
 }
 
@@ -3086,7 +3134,9 @@ body::after {
   -webkit-backdrop-filter: blur(12px) saturate(1.02);
 }
 
-@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+@supports not (
+  (backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))
+) {
   .site-header,
   .site-footer,
   .home-hero,
@@ -3206,7 +3256,11 @@ body::after {
       transparent 46%,
       var(--cinematic-edge) 100%
     ),
-    radial-gradient(circle at 68% 6%, var(--cinematic-warm) 0%, transparent 27%),
+    radial-gradient(
+      circle at 68% 6%,
+      var(--cinematic-warm) 0%,
+      transparent 27%
+    ),
     linear-gradient(
       180deg,
       var(--cinematic-mist) 0%,
@@ -3225,7 +3279,11 @@ body::after {
       transparent 44%,
       var(--cinematic-edge) 100%
     ),
-    radial-gradient(circle at 68% 5%, var(--cinematic-warm) 0%, transparent 24%),
+    radial-gradient(
+      circle at 68% 5%,
+      var(--cinematic-warm) 0%,
+      transparent 24%
+    ),
     linear-gradient(
       180deg,
       rgb(74 95 78 / 0.03) 0%,
@@ -3260,14 +3318,28 @@ body::after {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 78% 22%, rgb(255 228 173 / 0.14), transparent 25%),
-    linear-gradient(115deg, rgb(255 255 255 / 0.04), transparent 42%, rgb(32 89 52 / 0.05));
+    radial-gradient(
+      circle at 78% 22%,
+      rgb(255 228 173 / 0.14),
+      transparent 25%
+    ),
+    linear-gradient(
+      115deg,
+      rgb(255 255 255 / 0.04),
+      transparent 42%,
+      rgb(32 89 52 / 0.05)
+    );
 }
 
 .dark .home-hero::before {
   background:
     radial-gradient(circle at 78% 22%, rgb(203 158 84 / 0.08), transparent 25%),
-    linear-gradient(115deg, rgb(255 255 255 / 0.015), transparent 42%, rgb(0 0 0 / 0.12));
+    linear-gradient(
+      115deg,
+      rgb(255 255 255 / 0.015),
+      transparent 42%,
+      rgb(0 0 0 / 0.12)
+    );
 }
 
 .home-hero::after {
@@ -3328,13 +3400,23 @@ body::after {
   z-index: 1;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 50% 47%, transparent 0%, transparent 48%, rgb(20 44 28 / 0.18) 100%),
+    radial-gradient(
+      ellipse at 50% 47%,
+      transparent 0%,
+      transparent 48%,
+      rgb(20 44 28 / 0.18) 100%
+    ),
     radial-gradient(circle at 68% 8%, rgb(255 222 151 / 0.14), transparent 28%);
 }
 
 .dark .welcome-screen::after {
   background:
-    radial-gradient(ellipse at 50% 47%, transparent 0%, transparent 46%, rgb(0 0 0 / 0.36) 100%),
+    radial-gradient(
+      ellipse at 50% 47%,
+      transparent 0%,
+      transparent 46%,
+      rgb(0 0 0 / 0.36) 100%
+    ),
     radial-gradient(circle at 68% 8%, rgb(190 145 75 / 0.07), transparent 25%);
 }
 
@@ -3362,7 +3444,11 @@ body::after {
         transparent 53%,
         var(--cinematic-edge) 100%
       ),
-      radial-gradient(circle at 68% 6%, var(--cinematic-warm) 0%, transparent 30%),
+      radial-gradient(
+        circle at 68% 6%,
+        var(--cinematic-warm) 0%,
+        transparent 30%
+      ),
       linear-gradient(
         180deg,
         var(--cinematic-mist) 0%,
@@ -4169,7 +4255,6 @@ img {
   }
 }
 
-
 /* Production-safe welcome flight: decoded assets, compositor-only motion, no expensive moving filters */
 .flying-bird {
   left: -10rem;
@@ -4216,7 +4301,12 @@ img {
 
 .flying-bird__trail {
   height: 0.2rem;
-  background: linear-gradient(90deg, rgb(246 174 88 / 0.68), rgb(255 238 195 / 0.18), transparent);
+  background: linear-gradient(
+    90deg,
+    rgb(246 174 88 / 0.68),
+    rgb(255 238 195 / 0.18),
+    transparent
+  );
   animation: bird-trail-flow 720ms ease-out infinite;
   will-change: transform, opacity;
 }
@@ -4324,7 +4414,6 @@ img {
   }
 }
 
-
 @media (max-width: 420px) {
   .home-hero {
     border-radius: 1.5rem;
@@ -4358,5 +4447,141 @@ img {
   .hero-bird-scene__note--bottom {
     bottom: 0.65rem;
     left: 0.55rem;
+  }
+}
+
+/* Final mobile hero composition: stable, compact and GPU-light */
+.hero-bird-scene__art {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.hero-bird-scene__notes {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 560px) {
+  .hero-bird-scene {
+    min-height: 16.6rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    margin-top: 0.35rem;
+    padding: 0.7rem 0.65rem 0.85rem;
+    overflow: hidden;
+  }
+
+  .hero-bird-scene::before {
+    inset: 0.75rem 1rem 3.65rem;
+    border-radius: 48% 52% 46% 54% / 52% 48% 52% 48%;
+    opacity: 0.9;
+  }
+
+  .hero-bird-scene__art {
+    flex: 0 0 11.9rem;
+    height: 11.9rem;
+  }
+
+  .hero-bird-scene__art svg,
+  .hero-bird-scene svg {
+    width: min(100%, 14.35rem);
+    height: auto;
+  }
+
+  .hero-bird-scene__notes {
+    position: static;
+    width: min(100%, 18rem);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin: 0 auto;
+    padding-inline: 0.2rem;
+  }
+
+  .hero-bird-scene__note,
+  .hero-bird-scene__note--top,
+  .hero-bird-scene__note--bottom {
+    position: static;
+    inset: auto;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    min-height: 2.1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.38rem;
+    margin: 0;
+    padding: 0.44rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    animation: none;
+    box-shadow: 0 7px 18px rgb(20 44 29 / 0.08);
+    backdrop-filter: blur(7px) saturate(1.01);
+    -webkit-backdrop-filter: blur(7px) saturate(1.01);
+  }
+
+  .hero-bird-scene__note svg {
+    width: 0.86rem;
+    height: 0.86rem;
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .hero-bird-scene {
+    min-height: 15.35rem;
+    padding: 0.6rem 0.5rem 0.75rem;
+  }
+
+  .hero-bird-scene::before {
+    inset: 0.65rem 0.8rem 3.55rem;
+  }
+
+  .hero-bird-scene__art {
+    flex-basis: 10.85rem;
+    height: 10.85rem;
+  }
+
+  .hero-bird-scene__art svg,
+  .hero-bird-scene svg {
+    width: min(100%, 13.1rem);
+  }
+
+  .hero-bird-scene__notes {
+    gap: 0.4rem;
+    padding-inline: 0;
+  }
+
+  .hero-bird-scene__note,
+  .hero-bird-scene__note--top,
+  .hero-bird-scene__note--bottom {
+    min-height: 2rem;
+    padding: 0.41rem 0.45rem;
+    font-size: 0.6rem;
+  }
+}
+
+@media (max-width: 350px) {
+  .hero-bird-scene {
+    min-height: 17.2rem;
+  }
+
+  .hero-bird-scene__notes {
+    width: min(100%, 12.5rem);
+    grid-template-columns: 1fr;
   }
 }
