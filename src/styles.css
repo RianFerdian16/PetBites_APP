@@ -4124,7 +4124,6 @@ img {
   }
 }
 
-
 /* Production-safe welcome flight: decoded assets, compositor-only motion, no expensive moving filters */
 .flying-bird {
   left: -10rem;
@@ -4276,5 +4275,74 @@ img {
 
   .flying-bird__trails {
     display: none;
+  }
+}
+
+/* Final mobile hero illustration sizing: keep the artwork balanced on phones */
+@media (max-width: 560px) {
+  .home-hero {
+    min-height: auto;
+  }
+
+  .hero-bird-scene {
+    min-height: 14rem;
+    padding: 0 0.35rem 0.6rem;
+    align-self: auto;
+  }
+
+  .hero-bird-scene::before {
+    inset: 6% 14% 9%;
+    transform: rotate(-4deg) scale(0.88);
+  }
+
+  .hero-bird-scene svg {
+    width: min(72vw, 16rem);
+    max-width: 16rem;
+    max-height: 13rem;
+  }
+
+  .hero-bird-scene__note {
+    gap: 0.28rem;
+    padding: 0.38rem 0.52rem;
+    font-size: 0.6rem;
+    box-shadow: 0 7px 18px rgb(31 68 43 / 0.11);
+  }
+
+  .hero-bird-scene__note svg {
+    width: 0.8rem;
+    height: 0.8rem;
+  }
+
+  .hero-bird-scene__note--top {
+    top: 8%;
+    right: 5%;
+  }
+
+  .hero-bird-scene__note--bottom {
+    bottom: 8%;
+    left: 4%;
+  }
+}
+
+@media (max-width: 390px) {
+  .hero-bird-scene {
+    min-height: 12.75rem;
+    padding-bottom: 0.45rem;
+  }
+
+  .hero-bird-scene::before {
+    inset: 7% 15% 10%;
+    transform: rotate(-4deg) scale(0.84);
+  }
+
+  .hero-bird-scene svg {
+    width: min(70vw, 14.5rem);
+    max-width: 14.5rem;
+    max-height: 11.5rem;
+  }
+
+  .hero-bird-scene__note {
+    padding: 0.34rem 0.46rem;
+    font-size: 0.56rem;
   }
 }
