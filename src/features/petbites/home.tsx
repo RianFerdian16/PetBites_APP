@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AppFeature, Bird, FeatureId } from "@/lib/birds-data";
 
+import { BirdRequestForm } from "./bird-request-form";
 import { HeroBirdScene } from "./illustrations";
 import { useLanguage } from "./language";
 
@@ -208,6 +209,8 @@ export function HomePage({
           </div>
         )}
       </section>
+
+      <BirdRequestForm />
     </div>
   );
 }

@@ -1,0 +1,19 @@
+PetBites Brainstorm Final Patch
+
+Base: petbites(6).zip
+Added:
+- Private /admin CMS with Supabase Auth + RLS roles
+- Optional AI Content Assistant through Supabase Edge Function
+- Public Request Burung Baru form at bottom of homepage
+- Private request review queue in CMS
+- Convert request into a draft bird profile
+- Supabase migration, admin bootstrap, verification scripts
+
+Preserved:
+- Existing homepage design
+- Welcome/loading screen
+- Mobile optimization
+- Forest theme
+- Dark mode
+- ID/EN translation
+- Existing Supabase content

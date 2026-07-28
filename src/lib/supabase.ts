@@ -16,13 +16,14 @@ export function getSupabaseClient(): SupabaseClient {
   if (!browserClient) {
     browserClient = createClient(url, publishableKey, {
       auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storageKey: "petbites:auth",
       },
       global: {
         headers: {
-          "X-Client-Info": "petbites-web/1.1",
+          "X-Client-Info": "petbites-web/2.0",
         },
       },
     });

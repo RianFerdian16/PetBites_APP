@@ -86,7 +86,7 @@ type FetchOptions = {
 };
 
 const CACHE_KEY = "petbites:content:v2";
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_TTL_MS = 60 * 1000;
 const supportedFeatures = new Set<FeatureId>(["food", "toxic", "portion", "recipe"]);
 
 let memoryCache: { expiresAt: number; content: PetBitesContent } | null = null;

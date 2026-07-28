@@ -125,3 +125,7 @@ Data dimuat paralel, kemudian dikelompokkan di sisi aplikasi. Hasilnya disimpan 
 - status aman, hati-hati, dan berbahaya tidak hanya dibedakan melalui warna.
 
 Detail perubahan dan hasil pengujian tersedia di [QA_REPORT.md](./QA_REPORT.md).
+
+## CMS private, AI assistant, dan request burung
+
+Versi ini menambahkan CMS private di `/admin`, AI Content Assistant opsional melalui Supabase Edge Function, serta form Request Burung Baru di bagian bawah homepage. Ikuti `README_BRAINSTORM_FINAL.md` dan jalankan `supabase/cms_ai_request_setup.sql` sebelum menggunakan fitur tersebut.

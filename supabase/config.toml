@@ -1,0 +1,4 @@
+project_id = "petbites"
+
+[functions.petbites-ai]
+verify_jwt = true
