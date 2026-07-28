@@ -16,6 +16,25 @@ const allowedEntities = new Set([
 ]);
 const allowedActions = new Set(["draft", "improve", "translate", "review"]);
 
+const systemInstruction = [
+  "You are the private PetBites CMS content assistant.",
+  "Produce conservative, evidence-aware bird nutrition drafts and review public bird requests.",
+  "Never present medical or veterinary certainty.",
+  "Never invent source URLs.",
+  "A human admin must review every suggestion before publishing.",
+  "Return valid JSON only, without markdown fences.",
+].join(" ");
+
+type GeminiResponse = {
+  error?: { message?: string };
+  candidates?: Array<{
+    finishReason?: string;
+    content?: {
+      parts?: Array<{ text?: string }>;
+    };
+  }>;
+};
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -26,12 +45,15 @@ Deno.serve(async (request) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const publishableKey = Deno.env.get("SUPABASE_ANON_KEY");
-    const openAiKey = Deno.env.get("OPENAI_API_KEY");
-    const model = Deno.env.get("OPENAI_MODEL") || "gpt-5";
-    if (!supabaseUrl || !publishableKey)
+    const geminiKey = Deno.env.get("GEMINI_API_KEY");
+    const model = Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash";
+
+    if (!supabaseUrl || !publishableKey) {
       throw new Error("Supabase function environment is incomplete.");
-    if (!openAiKey)
-      return json({ error: "OPENAI_API_KEY belum diatur di Edge Function Secrets." }, 503);
+    }
+    if (!geminiKey) {
+      return json({ error: "GEMINI_API_KEY belum diatur di Edge Function Secrets." }, 503);
+    }
 
     const supabase = createClient(supabaseUrl, publishableKey, {
       global: { headers: { Authorization: authorization } },
@@ -59,35 +81,66 @@ Deno.serve(async (request) => {
     }
 
     const prompt = buildPrompt({ entity, action, draft, instruction });
-    const aiResponse = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openAiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        store: false,
-        instructions:
-          "You are the private PetBites CMS content assistant. Produce conservative, evidence-aware bird nutrition drafts and review public bird requests. Never present medical or veterinary certainty. Never invent source URLs. A human admin must review every suggestion before publishing. Return valid JSON only, without markdown fences.",
-        input: prompt,
-      }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 45_000);
 
-    const raw = await aiResponse.json();
-    if (!aiResponse.ok) {
-      console.error("OpenAI error", raw);
-      return json({ error: raw?.error?.message || "AI provider request failed" }, 502);
+    let geminiResponse: Response;
+    try {
+      geminiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": geminiKey,
+          },
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{ text: systemInstruction }],
+            },
+            contents: [
+              {
+                role: "user",
+                parts: [{ text: prompt }],
+              },
+            ],
+            generationConfig: {
+              responseMimeType: "application/json",
+            },
+          }),
+          signal: controller.signal,
+        },
+      );
+    } finally {
+      clearTimeout(timeout);
     }
 
-    const outputText = extractOutputText(raw);
+    const raw = (await geminiResponse.json()) as GeminiResponse;
+    if (!geminiResponse.ok) {
+      console.error("Gemini error", raw);
+      return json({ error: raw.error?.message || "Gemini API request failed" }, 502);
+    }
+
+    const outputText = extractGeminiText(raw);
+    if (!outputText) {
+      const finishReason = raw.candidates?.[0]?.finishReason;
+      return json(
+        {
+          error: finishReason
+            ? `Gemini tidak menghasilkan teks. Finish reason: ${finishReason}`
+            : "Gemini tidak menghasilkan respons teks.",
+        },
+        502,
+      );
+    }
+
     const parsed = parseJsonObject(outputText);
     await supabase.from("content_audit_log").insert({
       actor_id: userData.user.id,
       table_name: entity,
       record_id: String(draft.id ?? "new"),
       action: "ai_generate",
-      new_data: { action, model },
+      new_data: { action, model, provider: "gemini" },
     });
 
     return json({
@@ -97,6 +150,9 @@ Deno.serve(async (request) => {
     });
   } catch (error) {
     console.error(error);
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return json({ error: "Gemini terlalu lama merespons. Coba lagi." }, 504);
+    }
     return json({ error: error instanceof Error ? error.message : "Unexpected error" }, 500);
   }
 });
@@ -138,26 +194,12 @@ function buildPrompt(input: {
   });
 }
 
-function extractOutputText(response: Record<string, unknown>) {
-  if (typeof response.output_text === "string") return response.output_text;
-  const output = Array.isArray(response.output) ? response.output : [];
-  const parts: string[] = [];
-  for (const item of output) {
-    if (!item || typeof item !== "object") continue;
-    const content = Array.isArray((item as { content?: unknown }).content)
-      ? (item as { content: unknown[] }).content
-      : [];
-    for (const part of content) {
-      if (
-        part &&
-        typeof part === "object" &&
-        typeof (part as { text?: unknown }).text === "string"
-      ) {
-        parts.push((part as { text: string }).text);
-      }
-    }
-  }
-  return parts.join("\n");
+function extractGeminiText(response: GeminiResponse) {
+  const parts = response.candidates?.[0]?.content?.parts ?? [];
+  return parts
+    .map((part) => part.text ?? "")
+    .filter(Boolean)
+    .join("\n");
 }
 
 function parseJsonObject(value: string): Record<string, unknown> | null {

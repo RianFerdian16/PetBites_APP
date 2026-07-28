@@ -155,7 +155,7 @@ http://localhost:8080/admin
 7. Ubah status menjadi `reviewing` lalu simpan.
 8. Tekan **Buat draft profil burung** untuk membuat draft awal.
 
-## 10. Aktifkan AI — opsional
+## 10. Aktifkan Gemini AI — opsional
 
 CMS dapat dipakai tanpa langkah ini.
 
@@ -167,25 +167,22 @@ npx supabase projects list
 npx supabase link --project-ref PROJECT_REF_KAMU
 ```
 
-Simpan API key hanya sebagai Edge Function secret:
+Simpan Gemini API key hanya sebagai Edge Function secret:
 
 ```powershell
-npx supabase secrets set OPENAI_API_KEY="API_KEY_KAMU"
-```
-
-Model dapat diatur secara opsional:
-
-```powershell
-npx supabase secrets set OPENAI_MODEL="MODEL_YANG_KAMU_PAKAI"
+npx supabase secrets set GEMINI_API_KEY="API_KEY_GEMINI_KAMU"
+npx supabase secrets set GEMINI_MODEL="gemini-2.5-flash"
+npx supabase secrets list
 ```
 
 Deploy function:
 
 ```powershell
 npx supabase functions deploy petbites-ai
+npx supabase functions list
 ```
 
-Jangan menaruh API key AI di `.env.local`, source React, GitHub, atau environment frontend Vercel.
+Jangan menaruh API key AI di `.env.local`, source React, GitHub, atau environment frontend Vercel. Panduan lengkap tersedia di `README_GEMINI_AI_SETUP.md`.
 
 ## 11. Push dan deploy
 
