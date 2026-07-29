@@ -5636,3 +5636,40 @@ img {
     min-height: 18rem;
   }
 }
+
+/* CMS action feedback and clearer AI action context */
+.admin-ai-action-help {
+  margin: 0.55rem 0 0;
+  color: var(--muted-foreground);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.admin-editor-feedback {
+  margin-top: 1rem;
+  padding: 0.72rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: var(--card);
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.admin-editor-feedback--success {
+  border-color: color-mix(in oklab, var(--safe) 35%, var(--border));
+  background: color-mix(in oklab, var(--safe) 9%, var(--card));
+  color: var(--safe-foreground);
+}
+
+.admin-editor-feedback--info {
+  border-color: color-mix(in oklab, var(--primary) 30%, var(--border));
+  background: color-mix(in oklab, var(--primary) 8%, var(--card));
+  color: var(--foreground);
+}
+
+.admin-editor-feedback--error {
+  border-color: color-mix(in oklab, var(--toxic) 35%, var(--border));
+  background: color-mix(in oklab, var(--toxic) 9%, var(--card));
+  color: var(--toxic);
+}

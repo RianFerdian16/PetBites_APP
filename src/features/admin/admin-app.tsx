@@ -63,6 +63,11 @@ type EntityDefinition = {
   create: () => AdminRecord;
 };
 
+type EditorFeedback = {
+  tone: "success" | "info" | "error";
+  message: string;
+};
+
 const STATUS_OPTIONS = [
   { value: "draft", label: "Draft" },
   { value: "review", label: "Perlu review" },
@@ -334,6 +339,8 @@ export function AdminApp() {
   const [draft, setDraft] = useState<AdminRecord>(() => definitions.birds.create());
   const [isNew, setIsNew] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [editorFeedback, setEditorFeedback] = useState<EditorFeedback | null>(null);
   const [uploading, setUploading] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiAction, setAiAction] = useState<AiAction>("draft");
@@ -399,6 +406,7 @@ export function AdminApp() {
     setAiText("");
     setAiSuggestion(null);
     setAiApplyNotice("");
+    setEditorFeedback(null);
   }, [entity]);
 
   const definition = definitions[entity];
@@ -432,6 +440,7 @@ export function AdminApp() {
     setAiText("");
     setAiSuggestion(null);
     setAiApplyNotice("");
+    setEditorFeedback(null);
   }
 
   function newRecord() {
@@ -441,33 +450,90 @@ export function AdminApp() {
     setAiText("");
     setAiSuggestion(null);
     setAiApplyNotice("");
+    setEditorFeedback(null);
   }
 
   function updateDraft(key: string, value: unknown) {
     setDraft((current) => ({ ...current, [key]: value }));
+    setEditorFeedback(null);
   }
 
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!canEdit) {
-      setError("Role reviewer hanya dapat membaca dan menjalankan review AI.");
+      const message = "Role reviewer hanya dapat membaca dan menjalankan review AI.";
+      setError(message);
+      setEditorFeedback({ tone: "error", message });
       return;
     }
     setSaving(true);
     setError("");
     setNotice("");
+    setEditorFeedback(null);
 
     try {
       const payload = prepareRecord(entity, draft);
       await saveAdminRecord(entity, payload);
-      setNotice(`${definition.singular} berhasil disimpan.`);
+      const message = `${capitalize(definition.singular)} berhasil disimpan ke Supabase.`;
+      setNotice(message);
+      setEditorFeedback({
+        tone: "success",
+        message: `${message} Data pada form ini sekarang sudah tersimpan.`,
+      });
       setDraft(payload);
       setIsNew(false);
       await loadData();
     } catch (caught) {
-      setError(messageFrom(caught));
+      const message = messageFrom(caught);
+      setError(message);
+      setEditorFeedback({ tone: "error", message: `Gagal menyimpan: ${message}` });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function refreshCurrentRecord() {
+    if (!profile) return;
+
+    const currentId = String(draft.id ?? "").trim();
+    setRefreshing(true);
+    setError("");
+    setNotice("");
+    setEditorFeedback(null);
+
+    try {
+      const nextData = await fetchAdminData();
+      setData(nextData);
+
+      if (isNew || !currentId) {
+        setEditorFeedback({
+          tone: "info",
+          message:
+            "Daftar konten sudah dimuat ulang. Form baru tidak diubah karena belum tersimpan di database.",
+        });
+        return;
+      }
+
+      const refreshedRecord = nextData[entity].find((record) => String(record.id) === currentId);
+      if (!refreshedRecord) {
+        throw new Error("Konten ini tidak ditemukan lagi di database.");
+      }
+
+      setDraft(recordToDraft(refreshedRecord));
+      setAiText("");
+      setAiSuggestion(null);
+      setAiApplyNotice("");
+      setEditorFeedback({
+        tone: "info",
+        message:
+          "Konten berhasil dimuat ulang dari Supabase. Isi form, termasuk deskripsi, kembali ke versi terakhir yang tersimpan.",
+      });
+    } catch (caught) {
+      const message = messageFrom(caught);
+      setError(message);
+      setEditorFeedback({ tone: "error", message: `Gagal memuat ulang: ${message}` });
+    } finally {
+      setRefreshing(false);
     }
   }
 
@@ -558,6 +624,7 @@ export function AdminApp() {
     const message = `Diterapkan ke draft: ${changedLabels.join(", ")}. Tekan Simpan untuk menyimpan perubahan ke database.`;
     setAiApplyNotice(message);
     setNotice(message);
+    setEditorFeedback({ tone: "info", message });
   }
 
   function changeAiAction(nextAction: AiAction) {
@@ -729,8 +796,19 @@ export function AdminApp() {
                     : String(draft[definition.primary] ?? draft.id)}
                 </h2>
               </div>
-              <Button variant="outline" onClick={() => void loadData()} className="gap-2">
-                <RefreshCw className="h-4 w-4" /> Refresh
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void refreshCurrentRecord()}
+                disabled={refreshing}
+                className="gap-2"
+              >
+                {refreshing ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                {refreshing ? "Memuat…" : "Muat ulang"}
               </Button>
             </div>
 
@@ -816,6 +894,16 @@ export function AdminApp() {
                 applyNotice={aiApplyNotice}
                 onApply={applyAiSuggestion}
               />
+
+              {editorFeedback && (
+                <div
+                  className={`admin-editor-feedback admin-editor-feedback--${editorFeedback.tone}`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {editorFeedback.message}
+                </div>
+              )}
 
               <div className="admin-form-actions">
                 {!isNew && (
@@ -1049,8 +1137,8 @@ function AiAssistant({
         <select value={action} onChange={(event) => onAction(event.target.value as AiAction)}>
           <option value="draft">Buat draft</option>
           <option value="improve">Perbaiki isi</option>
-          <option value="translate">Terjemahkan ke English (preview)</option>
-          <option value="review">Review risiko/kekurangan</option>
+          <option value="translate">Buat versi Inggris dari isi ini</option>
+          <option value="review">Cek bagian isi yang perlu diperbaiki</option>
         </select>
         <Input
           value={instruction}
@@ -1066,6 +1154,7 @@ function AiAssistant({
           Jalankan AI
         </Button>
       </div>
+      <p className="admin-ai-action-help">{aiActionHelp(action)}</p>
       {(text || suggestion) && (
         <div className="admin-ai-result">
           {text && <p>{text}</p>}
@@ -1084,6 +1173,23 @@ function AiAssistant({
       )}
     </section>
   );
+}
+
+function aiActionHelp(action: AiAction) {
+  switch (action) {
+    case "draft":
+      return "AI membuat draf awal berdasarkan isi form yang sedang dibuka.";
+    case "improve":
+      return "AI merapikan isi form yang sedang dibuka tanpa langsung menyimpannya.";
+    case "translate":
+      return "AI membuat versi bahasa Inggris dari isi yang sedang dibuka. Hasilnya hanya preview dan tidak otomatis mengubah data.";
+    case "review":
+      return "AI memeriksa isi yang sedang dibuka dan menunjukkan bagian yang kurang jelas, meragukan, atau perlu diperbaiki.";
+  }
+}
+
+function capitalize(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function valuesEqual(left: unknown, right: unknown) {
