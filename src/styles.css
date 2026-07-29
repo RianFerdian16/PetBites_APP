@@ -5182,6 +5182,16 @@ img {
   white-space: pre-wrap;
 }
 
+.admin-ai-result .admin-ai-apply-notice {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid color-mix(in oklab, var(--primary) 28%, var(--border));
+  border-radius: 0.7rem;
+  background: color-mix(in oklab, var(--primary) 9%, var(--card));
+  color: var(--foreground);
+  font-weight: 650;
+  line-height: 1.5;
+}
+
 .admin-form-actions {
   display: flex;
   justify-content: flex-end;

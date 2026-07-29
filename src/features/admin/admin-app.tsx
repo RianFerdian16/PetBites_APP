@@ -340,6 +340,7 @@ export function AdminApp() {
   const [aiInstruction, setAiInstruction] = useState("");
   const [aiText, setAiText] = useState("");
   const [aiSuggestion, setAiSuggestion] = useState<Record<string, unknown> | null>(null);
+  const [aiApplyNotice, setAiApplyNotice] = useState("");
   const pendingBirdDraft = useRef<AdminRecord | null>(null);
 
   useEffect(() => {
@@ -397,6 +398,7 @@ export function AdminApp() {
     setAiAction(entity === "bird_requests" ? "review" : "draft");
     setAiText("");
     setAiSuggestion(null);
+    setAiApplyNotice("");
   }, [entity]);
 
   const definition = definitions[entity];
@@ -429,6 +431,7 @@ export function AdminApp() {
     setNotice("");
     setAiText("");
     setAiSuggestion(null);
+    setAiApplyNotice("");
   }
 
   function newRecord() {
@@ -437,6 +440,7 @@ export function AdminApp() {
     setNotice("");
     setAiText("");
     setAiSuggestion(null);
+    setAiApplyNotice("");
   }
 
   function updateDraft(key: string, value: unknown) {
@@ -510,6 +514,7 @@ export function AdminApp() {
     setError("");
     setAiText("");
     setAiSuggestion(null);
+    setAiApplyNotice("");
     try {
       const response = await requestAiSuggestion({
         action: aiAction,
@@ -528,16 +533,36 @@ export function AdminApp() {
 
   function applyAiSuggestion() {
     if (!canEdit || aiAction === "translate" || !aiSuggestion) return;
-    const allowedFields = new Set(definition.fields.map((field) => field.key));
-    const applicable = Object.fromEntries(
-      Object.entries(aiSuggestion).filter(([key]) => allowedFields.has(key)),
+
+    const fieldLabels = new Map(definition.fields.map((field) => [field.key, field.label]));
+    const changedEntries = Object.entries(aiSuggestion).filter(
+      ([key, value]) => fieldLabels.has(key) && !valuesEqual(draft[key], value),
     );
+
+    if (changedEntries.length === 0) {
+      setAiApplyNotice(
+        "Tidak ada perubahan baru yang bisa diterapkan. Hasil review hanya mengonfirmasi nilai draft yang sudah sama.",
+      );
+      return;
+    }
+
+    const applicable = Object.fromEntries(changedEntries);
+    const changedLabels = changedEntries.map(([key]) => fieldLabels.get(key) ?? key);
+
     setDraft((current) => ({
       ...current,
       ...applicable,
       ...(entity === "bird_requests" ? {} : { ai_generated: true }),
     }));
-    setNotice("Saran AI diterapkan sebagai draft. Periksa kembali sebelum publish.");
+
+    const message = `Diterapkan ke draft: ${changedLabels.join(", ")}. Tekan Simpan untuk menyimpan perubahan ke database.`;
+    setAiApplyNotice(message);
+    setNotice(message);
+  }
+
+  function changeAiAction(nextAction: AiAction) {
+    setAiAction(nextAction);
+    setAiApplyNotice("");
   }
 
   function createBirdDraftFromRequest() {
@@ -784,10 +809,11 @@ export function AdminApp() {
                 busy={aiBusy}
                 text={aiText}
                 suggestion={aiSuggestion}
-                onAction={setAiAction}
+                onAction={changeAiAction}
                 onInstruction={setAiInstruction}
                 onAsk={() => void askAi()}
                 canApply={canEdit && aiAction !== "translate"}
+                applyNotice={aiApplyNotice}
                 onApply={applyAiSuggestion}
               />
 
@@ -991,6 +1017,7 @@ function AiAssistant({
   onInstruction,
   onAsk,
   canApply,
+  applyNotice,
   onApply,
 }: {
   entity: AdminEntity;
@@ -1003,6 +1030,7 @@ function AiAssistant({
   onInstruction: (value: string) => void;
   onAsk: () => void;
   canApply: boolean;
+  applyNotice: string;
   onApply: () => void;
 }) {
   return (
@@ -1047,10 +1075,27 @@ function AiAssistant({
               <Pencil className="h-4 w-4" /> Terapkan ke draft
             </Button>
           )}
+          {applyNotice && (
+            <p className="admin-ai-apply-notice" role="status" aria-live="polite">
+              {applyNotice}
+            </p>
+          )}
         </div>
       )}
     </section>
   );
+}
+
+function valuesEqual(left: unknown, right: unknown) {
+  if (Object.is(left, right)) return true;
+  if (left === null || right === null) return false;
+  if (typeof left !== "object" || typeof right !== "object") return false;
+
+  try {
+    return JSON.stringify(left) === JSON.stringify(right);
+  } catch {
+    return false;
+  }
 }
 
 function ContentBadge({ value }: { value: string }) {
