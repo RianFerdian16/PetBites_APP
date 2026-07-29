@@ -1239,13 +1239,22 @@ function AdminMessage({
 }
 
 function recordToDraft(record: AdminRecord): AdminRecord {
-  return {
+  const draft: AdminRecord = {
     ...record,
     source_urls: Array.isArray(record.source_urls) ? record.source_urls : [],
-    benefits: Array.isArray(record.benefits) ? record.benefits : [],
-    ingredients: Array.isArray(record.ingredients) ? record.ingredients : [],
-    steps: Array.isArray(record.steps) ? record.steps : [],
   };
+
+  if ("benefits" in record) {
+    draft.benefits = Array.isArray(record.benefits) ? record.benefits : [];
+  }
+  if ("ingredients" in record) {
+    draft.ingredients = Array.isArray(record.ingredients) ? record.ingredients : [];
+  }
+  if ("steps" in record) {
+    draft.steps = Array.isArray(record.steps) ? record.steps : [];
+  }
+
+  return draft;
 }
 
 function prepareRecord(entity: AdminEntity, draft: AdminRecord, requireId = true): AdminRecord {

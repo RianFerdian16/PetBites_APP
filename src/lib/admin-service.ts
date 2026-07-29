@@ -1,9 +1,4 @@
-import {
-  FunctionsFetchError,
-  FunctionsHttpError,
-  FunctionsRelayError,
-  type Session,
-} from "@supabase/supabase-js";
+import type { Session } from "@supabase/supabase-js";
 
 import { clearPetBitesCache } from "@/lib/bird-service";
 import { getSupabaseClient } from "@/lib/supabase";
@@ -122,6 +117,15 @@ export async function saveAdminRecord(entity: AdminEntity, record: AdminRecord) 
   delete payload.ingredients;
   delete payload.steps;
 
+  // `benefits` hanya merupakan kolom pada tabel bird_foods. Editor CMS
+  // sebelumnya menambahkan array kosong ini ke semua jenis konten, sehingga
+  // Supabase menolak penyimpanan birds dengan error schema cache.
+  if (entity === "bird_foods") {
+    payload.benefits = normalizeLines(record.benefits);
+  } else {
+    delete payload.benefits;
+  }
+
   if (entity === "recipes") {
     const ingredients = normalizeLines(record.ingredients);
     const steps = normalizeLines(record.steps);
@@ -197,43 +201,10 @@ export async function requestAiSuggestion(input: {
   draft: Record<string, unknown>;
   instruction?: string;
 }) {
-  const supabase = getSupabaseClient();
-  const { data: sessionData } = await supabase.auth.getSession();
-  const accessToken = sessionData.session?.access_token;
-  if (!accessToken) throw new Error("Sesi admin tidak ditemukan. Silakan login ulang.");
-
-  const { data, error } = await supabase.functions.invoke("petbites-ai", {
+  const { data, error } = await getSupabaseClient().functions.invoke("petbites-ai", {
     body: input,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
   });
-
-  if (error instanceof FunctionsHttpError) {
-    let message = "Edge Function mengembalikan error.";
-    try {
-      const payload = (await error.context.json()) as {
-        error?: string;
-        message?: string;
-        providerStatus?: number;
-      };
-      message = payload.error || payload.message || message;
-      if (payload.providerStatus) message += ` (Gemini HTTP ${payload.providerStatus})`;
-    } catch {
-      message = error.message || message;
-    }
-    throw new Error(message);
-  }
-
-  if (error instanceof FunctionsRelayError) {
-    throw new Error(`Supabase relay error: ${error.message}`);
-  }
-
-  if (error instanceof FunctionsFetchError) {
-    throw new Error(`Edge Function tidak dapat dijangkau: ${error.message}`);
-  }
-
-  if (error) throw new Error(error.message);
+  if (error) throw error;
   if (!data || typeof data !== "object") throw new Error("Respons AI tidak valid.");
   return data as { suggestion?: Record<string, unknown>; text?: string; model?: string };
 }
