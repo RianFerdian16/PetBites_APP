@@ -44,7 +44,10 @@ Deno.serve(async (request) => {
     if (!authorization) return json({ error: "Unauthorized" }, 401);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const publishableKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const publishableKey =
+      Deno.env.get("SUPABASE_ANON_KEY") ||
+      Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ||
+      readDefaultNamedKey("SUPABASE_PUBLISHABLE_KEYS");
     const geminiKey = Deno.env.get("GEMINI_API_KEY");
     const model = Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash";
 
@@ -118,7 +121,13 @@ Deno.serve(async (request) => {
     const raw = (await geminiResponse.json()) as GeminiResponse;
     if (!geminiResponse.ok) {
       console.error("Gemini error", raw);
-      return json({ error: raw.error?.message || "Gemini API request failed" }, 502);
+      return json(
+        {
+          error: raw.error?.message || "Gemini API request failed",
+          providerStatus: geminiResponse.status,
+        },
+        502,
+      );
     }
 
     const outputText = extractGeminiText(raw);
@@ -192,6 +201,18 @@ function buildPrompt(input: {
       "For bird requests, never mark approved solely from the request; prefer reviewing and explain what must be verified.",
     ],
   });
+}
+
+function readDefaultNamedKey(variableName: string) {
+  const raw = Deno.env.get(variableName);
+  if (!raw) return undefined;
+
+  try {
+    const keys = JSON.parse(raw) as Record<string, string>;
+    return keys.default || Object.values(keys)[0];
+  } catch {
+    return undefined;
+  }
 }
 
 function extractGeminiText(response: GeminiResponse) {

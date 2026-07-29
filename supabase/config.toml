@@ -1,4 +1,7 @@
 project_id = "petbites"
 
 [functions.petbites-ai]
-verify_jwt = true
+# Auth is verified inside the function with supabase.auth.getUser(),
+# followed by an admin_users role check. Disabling the legacy gateway check
+# prevents false 401 responses on projects using newer JWT signing keys.
+verify_jwt = false
