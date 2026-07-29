@@ -5673,3 +5673,15 @@ img {
   background: color-mix(in oklab, var(--toxic) 9%, var(--card));
   color: var(--toxic);
 }
+
+/* Final CMS AI result controls */
+.admin-ai-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+}
+
+.admin-ai-result-actions:empty {
+  display: none;
+}

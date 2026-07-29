@@ -4,6 +4,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 const allowedEntities = new Set([
@@ -16,12 +17,31 @@ const allowedEntities = new Set([
 ]);
 const allowedActions = new Set(["draft", "improve", "translate", "review"]);
 
+const editableFields: Record<string, string[]> = {
+  birds: ["name", "emoji", "scientific_name", "description"],
+  bird_foods: ["name", "category", "benefits", "note"],
+  toxic_entries: ["name", "status", "explanation"],
+  portion_rules: ["size", "condition", "grams", "teaspoon", "morning", "evening"],
+  recipes: ["title", "purpose", "ingredients", "steps"],
+  bird_requests: ["bird_name", "local_name", "scientific_name", "admin_notes", "status"],
+};
+
+const readableFields: Record<string, string[]> = {
+  birds: ["name", "scientific_name", "description"],
+  bird_foods: ["name", "category", "benefits", "note"],
+  toxic_entries: ["name", "status", "explanation"],
+  portion_rules: ["size", "condition", "grams", "teaspoon", "morning", "evening"],
+  recipes: ["title", "purpose", "ingredients", "steps"],
+  bird_requests: ["bird_name", "local_name", "scientific_name", "reason", "admin_notes", "status"],
+};
+
 const systemInstruction = [
   "You are the private PetBites CMS content assistant.",
-  "Produce conservative, evidence-aware bird nutrition drafts and review public bird requests.",
-  "Never present medical or veterinary certainty.",
-  "Never invent source URLs.",
-  "A human admin must review every suggestion before publishing.",
+  "Write concise, natural Indonesian unless the task is translation.",
+  "Be conservative and evidence-aware about bird care and nutrition.",
+  "Never invent source URLs, medical certainty, veterinary diagnoses, or precise dosage claims.",
+  "Never change IDs, relations, publication status, contact details, image URLs, sort order, or sources.",
+  "A human admin must review every suggestion before saving or publishing.",
   "Return valid JSON only, without markdown fences.",
 ].join(" ");
 
@@ -29,10 +49,13 @@ type GeminiResponse = {
   error?: { message?: string };
   candidates?: Array<{
     finishReason?: string;
-    content?: {
-      parts?: Array<{ text?: string }>;
-    };
+    content?: { parts?: Array<{ text?: string }> };
   }>;
+};
+
+type ParsedOutput = {
+  suggestion?: Record<string, unknown> | null;
+  text?: unknown;
 };
 
 Deno.serve(async (request) => {
@@ -41,7 +64,7 @@ Deno.serve(async (request) => {
 
   try {
     const authorization = request.headers.get("Authorization");
-    if (!authorization) return json({ error: "Unauthorized" }, 401);
+    if (!authorization) return json({ error: "Sesi admin tidak ditemukan. Login ulang." }, 401);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const publishableKey =
@@ -49,10 +72,10 @@ Deno.serve(async (request) => {
       Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ||
       readDefaultNamedKey("SUPABASE_PUBLISHABLE_KEYS");
     const geminiKey = Deno.env.get("GEMINI_API_KEY");
-    const model = Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash";
+    const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite";
 
     if (!supabaseUrl || !publishableKey) {
-      throw new Error("Supabase function environment is incomplete.");
+      throw new Error("Konfigurasi Supabase Edge Function belum lengkap.");
     }
     if (!geminiKey) {
       return json({ error: "GEMINI_API_KEY belum diatur di Edge Function Secrets." }, 503);
@@ -65,23 +88,32 @@ Deno.serve(async (request) => {
 
     const token = authorization.replace(/^Bearer\s+/i, "");
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !userData.user) return json({ error: "Unauthorized" }, 401);
+    if (userError || !userData.user) {
+      return json({ error: "Sesi admin sudah tidak valid. Logout lalu login kembali." }, 401);
+    }
 
     const { data: admin, error: adminError } = await supabase
       .from("admin_users")
       .select("role")
       .eq("user_id", userData.user.id)
       .maybeSingle();
-    if (adminError || !admin) return json({ error: "Admin access required" }, 403);
+    if (adminError || !admin) return json({ error: "Akses admin diperlukan." }, 403);
 
     const body = await request.json();
     const entity = String(body.entity ?? "");
     const action = String(body.action ?? "");
-    const draft = body.draft && typeof body.draft === "object" ? body.draft : {};
-    const instruction = String(body.instruction ?? "").slice(0, 2000);
     if (!allowedEntities.has(entity) || !allowedActions.has(action)) {
-      return json({ error: "Invalid AI request" }, 400);
+      return json({ error: "Permintaan AI tidak valid." }, 400);
     }
+    if (admin.role === "reviewer" && action !== "review") {
+      return json({ error: "Role reviewer hanya boleh menjalankan pemeriksaan isi." }, 403);
+    }
+
+    const sourceDraft = body.draft && typeof body.draft === "object" ? body.draft : {};
+    const draft = pickFields(sourceDraft as Record<string, unknown>, readableFields[entity]);
+    const instruction = String(body.instruction ?? "")
+      .trim()
+      .slice(0, 1500);
 
     const prompt = buildPrompt({ entity, action, draft, instruction });
     const controller = new AbortController();
@@ -98,17 +130,11 @@ Deno.serve(async (request) => {
             "x-goog-api-key": geminiKey,
           },
           body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: systemInstruction }],
-            },
-            contents: [
-              {
-                role: "user",
-                parts: [{ text: prompt }],
-              },
-            ],
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: {
               responseMimeType: "application/json",
+              maxOutputTokens: 2048,
             },
           }),
           signal: controller.signal,
@@ -123,7 +149,7 @@ Deno.serve(async (request) => {
       console.error("Gemini error", raw);
       return json(
         {
-          error: raw.error?.message || "Gemini API request failed",
+          error: raw.error?.message || "Gemini gagal memproses permintaan.",
           providerStatus: geminiResponse.status,
         },
         502,
@@ -136,33 +162,44 @@ Deno.serve(async (request) => {
       return json(
         {
           error: finishReason
-            ? `Gemini tidak menghasilkan teks. Finish reason: ${finishReason}`
+            ? `Gemini tidak menghasilkan teks. Alasan: ${finishReason}`
             : "Gemini tidak menghasilkan respons teks.",
         },
         502,
       );
     }
 
-    const parsed = parseJsonObject(outputText);
-    await supabase.from("content_audit_log").insert({
+    const parsed = parseJsonObject(outputText) as ParsedOutput | null;
+    if (!parsed)
+      return json({ error: "Format respons Gemini tidak dapat dibaca. Coba lagi." }, 502);
+
+    const suggestion =
+      action === "draft" || action === "improve"
+        ? sanitizeSuggestion(entity, parsed.suggestion)
+        : null;
+    const text = String(parsed.text ?? "")
+      .trim()
+      .slice(0, 8000);
+
+    const { error: auditError } = await supabase.from("content_audit_log").insert({
       actor_id: userData.user.id,
       table_name: entity,
-      record_id: String(draft.id ?? "new"),
+      record_id: String((sourceDraft as Record<string, unknown>).id ?? "new"),
       action: "ai_generate",
       new_data: { action, model, provider: "gemini" },
     });
+    if (auditError) console.error("Audit log error", auditError);
 
-    return json({
-      suggestion: parsed?.suggestion ?? parsed ?? null,
-      text: parsed?.text ?? (parsed ? "" : outputText),
-      model,
-    });
+    return json({ suggestion, text, model });
   } catch (error) {
     console.error(error);
     if (error instanceof DOMException && error.name === "AbortError") {
       return json({ error: "Gemini terlalu lama merespons. Coba lagi." }, 504);
     }
-    return json({ error: error instanceof Error ? error.message : "Unexpected error" }, 500);
+    return json(
+      { error: error instanceof Error ? error.message : "Terjadi kesalahan server." },
+      500,
+    );
   }
 });
 
@@ -172,35 +209,132 @@ function buildPrompt(input: {
   draft: Record<string, unknown>;
   instruction: string;
 }) {
+  const fields = editableFields[input.entity];
   const actionGuide: Record<string, string> = {
-    draft: "Complete missing fields with a cautious Indonesian draft.",
-    improve: "Improve clarity, consistency, and readability while preserving factual boundaries.",
+    draft:
+      "Create a cautious first draft only for missing or weak editable fields. Preserve usable existing facts.",
+    improve:
+      "Improve clarity and readability of existing editable fields without adding unsupported facts.",
     translate:
-      "Translate human-readable content fields into natural English. Keep IDs, enums, URLs, and numeric fields unchanged.",
+      "Translate the human-readable content into natural English. Return the translation in text only.",
     review:
-      "Review the draft for missing evidence, unsafe certainty, contradictions, spam, and duplicate-looking content. Do not rewrite unless necessary.",
+      "Review completeness, contradictions, unsafe certainty, and claims needing verification. Return advice in Indonesian text only.",
   };
+
+  const outputContract =
+    input.action === "draft" || input.action === "improve"
+      ? {
+          suggestion: `object containing only these keys when relevant: ${fields.join(", ")}`,
+          text: "a short Indonesian explanation of what was changed and what still needs human verification",
+        }
+      : {
+          suggestion: null,
+          text:
+            input.action === "translate"
+              ? "the complete natural English version"
+              : "a clear Indonesian review with actionable points",
+        };
 
   return JSON.stringify({
     task: actionGuide[input.action],
     entity: input.entity,
     current_draft: input.draft,
     additional_instruction: input.instruction || null,
-    output_contract: {
-      suggestion:
-        input.entity === "bird_requests"
-          ? "object containing only bird_name, local_name, scientific_name, status, and admin_notes"
-          : "object containing only fields relevant to this entity",
-      text: "short reviewer note in Indonesian",
-    },
-    safety_rules: [
-      "Never fabricate veterinary claims or precise dosage claims.",
-      "Never fabricate source URLs.",
-      "When evidence is uncertain, keep content_status as review and review_status as needs_review.",
-      "For toxic entries, prefer caution over unsupported safe claims.",
-      "For bird requests, never mark approved solely from the request; prefer reviewing and explain what must be verified.",
+    output_contract: outputContract,
+    strict_rules: [
+      `For suggestions, never use fields outside: ${fields.join(", ")}.`,
+      "Never produce source_urls or invent references.",
+      "Never change id, bird_id, contact, reason, image_url, sort_order, content_status, or review_status.",
+      "For bird_requests, status may only be pending, reviewing, rejected, or duplicate; never approved.",
+      "For toxic_entries, status may only be safe, caution, or toxic.",
+      "For bird_foods, category may only be main or extra.",
+      "For portion_rules, size may only be Kecil, Standar, or Besar and condition may only be Harian, Mabung, or Ternak.",
     ],
   });
+}
+
+function sanitizeSuggestion(entity: string, value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+  const allowed = new Set(editableFields[entity]);
+  const result: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (!allowed.has(key) || raw === undefined) continue;
+
+    if (key === "benefits" || key === "ingredients" || key === "steps") {
+      const items = normalizeTextList(raw);
+      if (items.length > 0) result[key] = items;
+      continue;
+    }
+
+    if (key === "grams") {
+      const number = Number(raw);
+      if (Number.isFinite(number) && number > 0) result[key] = number;
+      continue;
+    }
+
+    if (key === "category") {
+      if (raw === "main" || raw === "extra") result[key] = raw;
+      continue;
+    }
+
+    if (key === "status" && entity === "toxic_entries") {
+      if (raw === "safe" || raw === "caution" || raw === "toxic") result[key] = raw;
+      continue;
+    }
+
+    if (key === "status" && entity === "bird_requests") {
+      if (raw === "pending" || raw === "reviewing" || raw === "rejected" || raw === "duplicate") {
+        result[key] = raw;
+      }
+      continue;
+    }
+
+    if (key === "size") {
+      if (raw === "Kecil" || raw === "Standar" || raw === "Besar") result[key] = raw;
+      continue;
+    }
+
+    if (key === "condition") {
+      if (raw === "Harian" || raw === "Mabung" || raw === "Ternak") result[key] = raw;
+      continue;
+    }
+
+    if (typeof raw === "string") {
+      const cleaned = raw.trim().slice(0, 6000);
+      if (cleaned) result[key] = cleaned;
+    }
+  }
+
+  return Object.keys(result).length > 0 ? result : null;
+}
+
+function pickFields(record: Record<string, unknown>, fields: string[]) {
+  return Object.fromEntries(
+    fields
+      .filter((field) => field in record)
+      .map((field) => [field, sanitizePromptValue(record[field])]),
+  );
+}
+
+function sanitizePromptValue(value: unknown): unknown {
+  if (typeof value === "string") return value.slice(0, 6000);
+  if (typeof value === "number" || typeof value === "boolean" || value === null) return value;
+  if (Array.isArray(value)) return value.slice(0, 50).map((item) => String(item).slice(0, 500));
+  return undefined;
+}
+
+function normalizeTextList(value: unknown) {
+  const source = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(/\r?\n/)
+      : [];
+  return source
+    .map(String)
+    .map((item) => item.trim().slice(0, 1000))
+    .filter(Boolean)
+    .slice(0, 50);
 }
 
 function readDefaultNamedKey(variableName: string) {

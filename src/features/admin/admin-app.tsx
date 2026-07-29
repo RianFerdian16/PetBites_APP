@@ -1,6 +1,7 @@
 import type { Session } from "@supabase/supabase-js";
 import {
   Bot,
+  Copy,
   Database,
   ExternalLink,
   ImagePlus,
@@ -347,6 +348,7 @@ export function AdminApp() {
   const [aiInstruction, setAiInstruction] = useState("");
   const [aiText, setAiText] = useState("");
   const [aiSuggestion, setAiSuggestion] = useState<Record<string, unknown> | null>(null);
+  const [aiModel, setAiModel] = useState("");
   const [aiApplyNotice, setAiApplyNotice] = useState("");
   const pendingBirdDraft = useRef<AdminRecord | null>(null);
 
@@ -405,6 +407,7 @@ export function AdminApp() {
     setAiAction(entity === "bird_requests" ? "review" : "draft");
     setAiText("");
     setAiSuggestion(null);
+    setAiModel("");
     setAiApplyNotice("");
     setEditorFeedback(null);
   }, [entity]);
@@ -439,6 +442,7 @@ export function AdminApp() {
     setNotice("");
     setAiText("");
     setAiSuggestion(null);
+    setAiModel("");
     setAiApplyNotice("");
     setEditorFeedback(null);
   }
@@ -449,6 +453,7 @@ export function AdminApp() {
     setNotice("");
     setAiText("");
     setAiSuggestion(null);
+    setAiModel("");
     setAiApplyNotice("");
     setEditorFeedback(null);
   }
@@ -522,6 +527,7 @@ export function AdminApp() {
       setDraft(recordToDraft(refreshedRecord));
       setAiText("");
       setAiSuggestion(null);
+      setAiModel("");
       setAiApplyNotice("");
       setEditorFeedback({
         tone: "info",
@@ -551,10 +557,14 @@ export function AdminApp() {
     try {
       await deleteAdminRecord(entity, String(draft.id));
       newRecord();
-      setNotice(`${definition.singular} berhasil dihapus.`);
+      const message = `${capitalize(definition.singular)} berhasil dihapus dari Supabase.`;
+      setNotice(message);
+      setEditorFeedback({ tone: "success", message });
       await loadData();
     } catch (caught) {
-      setError(messageFrom(caught));
+      const message = messageFrom(caught);
+      setError(message);
+      setEditorFeedback({ tone: "error", message: `Gagal menghapus: ${message}` });
     } finally {
       setSaving(false);
     }
@@ -567,20 +577,36 @@ export function AdminApp() {
     try {
       const url = await uploadBirdMedia(file, String(draft.id || draft.name || "bird"));
       updateDraft("image_url", url);
-      setNotice("Gambar berhasil diupload. Tekan Simpan untuk menyimpan URL ke profil burung.");
+      const message =
+        "Gambar berhasil diupload. Tekan Simpan untuk menyimpan URL ke profil burung.";
+      setNotice(message);
+      setEditorFeedback({ tone: "info", message });
     } catch (caught) {
-      setError(messageFrom(caught));
+      const message = messageFrom(caught);
+      setError(message);
+      setEditorFeedback({ tone: "error", message: `Gagal mengupload gambar: ${message}` });
     } finally {
       setUploading(false);
     }
   }
 
   async function askAi() {
+    if (profile?.role === "reviewer" && aiAction !== "review") {
+      const message =
+        "Role reviewer hanya dapat memakai pilihan Cek bagian isi yang perlu diperbaiki.";
+      setError(message);
+      setEditorFeedback({ tone: "error", message });
+      return;
+    }
+
     setAiBusy(true);
     setError("");
     setAiText("");
     setAiSuggestion(null);
+    setAiModel("");
     setAiApplyNotice("");
+    setEditorFeedback(null);
+
     try {
       const response = await requestAiSuggestion({
         action: aiAction,
@@ -590,25 +616,39 @@ export function AdminApp() {
       });
       setAiText(response.text ?? "");
       setAiSuggestion(response.suggestion ?? null);
+      setAiModel(response.model ?? "");
+      setEditorFeedback({
+        tone: "info",
+        message:
+          aiAction === "translate"
+            ? "Versi Inggris berhasil dibuat. Salin hasilnya bila ingin dipakai di tempat lain."
+            : aiAction === "review"
+              ? "Pemeriksaan AI selesai. Hasil ini adalah panduan review dan tidak mengubah form."
+              : "Hasil AI berhasil dibuat. Periksa hasilnya sebelum diterapkan ke draft.",
+      });
     } catch (caught) {
-      setError(messageFrom(caught));
+      const message = messageFrom(caught);
+      setError(message);
+      setEditorFeedback({ tone: "error", message: `AI gagal: ${message}` });
     } finally {
       setAiBusy(false);
     }
   }
 
   function applyAiSuggestion() {
-    if (!canEdit || aiAction === "translate" || !aiSuggestion) return;
+    if (!canEdit || !aiSuggestion || (aiAction !== "draft" && aiAction !== "improve")) return;
 
+    const sanitized = sanitizeAiSuggestion(entity, aiSuggestion);
     const fieldLabels = new Map(definition.fields.map((field) => [field.key, field.label]));
-    const changedEntries = Object.entries(aiSuggestion).filter(
+    const changedEntries = Object.entries(sanitized).filter(
       ([key, value]) => fieldLabels.has(key) && !valuesEqual(draft[key], value),
     );
 
     if (changedEntries.length === 0) {
-      setAiApplyNotice(
-        "Tidak ada perubahan baru yang bisa diterapkan. Hasil review hanya mengonfirmasi nilai draft yang sudah sama.",
-      );
+      const message =
+        "Tidak ada perubahan valid yang bisa diterapkan. AI mungkin hanya mengonfirmasi isi yang sudah sama atau memberi field yang tidak digunakan CMS.";
+      setAiApplyNotice(message);
+      setEditorFeedback({ tone: "info", message });
       return;
     }
 
@@ -618,18 +658,44 @@ export function AdminApp() {
     setDraft((current) => ({
       ...current,
       ...applicable,
-      ...(entity === "bird_requests" ? {} : { ai_generated: true }),
+      ...(entity === "bird_requests"
+        ? {}
+        : {
+            ai_generated: true,
+            ai_model: aiModel || null,
+            ai_generated_at: new Date().toISOString(),
+          }),
     }));
 
-    const message = `Diterapkan ke draft: ${changedLabels.join(", ")}. Tekan Simpan untuk menyimpan perubahan ke database.`;
+    const message = `Diterapkan ke draft: ${changedLabels.join(", ")}. Tekan Simpan untuk menyimpan perubahan ke Supabase.`;
     setAiApplyNotice(message);
     setNotice(message);
     setEditorFeedback({ tone: "info", message });
   }
 
+  async function copyAiTranslation() {
+    const value = aiText.trim();
+    if (!value) return;
+
+    try {
+      await navigator.clipboard.writeText(value);
+      const message = "Versi Inggris berhasil disalin ke clipboard.";
+      setAiApplyNotice(message);
+      setEditorFeedback({ tone: "success", message });
+    } catch {
+      const message = "Tidak bisa menyalin otomatis. Blok teks hasil AI lalu salin secara manual.";
+      setAiApplyNotice(message);
+      setEditorFeedback({ tone: "error", message });
+    }
+  }
+
   function changeAiAction(nextAction: AiAction) {
     setAiAction(nextAction);
+    setAiText("");
+    setAiSuggestion(null);
+    setAiModel("");
     setAiApplyNotice("");
+    setEditorFeedback(null);
   }
 
   function createBirdDraftFromRequest() {
@@ -890,9 +956,11 @@ export function AdminApp() {
                 onAction={changeAiAction}
                 onInstruction={setAiInstruction}
                 onAsk={() => void askAi()}
-                canApply={canEdit && aiAction !== "translate"}
+                canApply={canEdit && (aiAction === "draft" || aiAction === "improve")}
+                canCopy={aiAction === "translate" && Boolean(aiText.trim())}
                 applyNotice={aiApplyNotice}
                 onApply={applyAiSuggestion}
+                onCopy={() => void copyAiTranslation()}
               />
 
               {editorFeedback && (
@@ -1105,8 +1173,10 @@ function AiAssistant({
   onInstruction,
   onAsk,
   canApply,
+  canCopy,
   applyNotice,
   onApply,
+  onCopy,
 }: {
   entity: AdminEntity;
   action: AiAction;
@@ -1118,8 +1188,10 @@ function AiAssistant({
   onInstruction: (value: string) => void;
   onAsk: () => void;
   canApply: boolean;
+  canCopy: boolean;
   applyNotice: string;
   onApply: () => void;
+  onCopy: () => void;
 }) {
   return (
     <section className="admin-ai-box">
@@ -1159,10 +1231,28 @@ function AiAssistant({
         <div className="admin-ai-result">
           {text && <p>{text}</p>}
           {suggestion && <pre>{JSON.stringify(suggestion, null, 2)}</pre>}
-          {suggestion && canApply && (
-            <Button type="button" variant="outline" onClick={onApply} className="gap-2">
-              <Pencil className="h-4 w-4" /> Terapkan ke draft
-            </Button>
+          <div className="admin-ai-result-actions">
+            {suggestion && canApply && (
+              <Button type="button" variant="outline" onClick={onApply} className="gap-2">
+                <Pencil className="h-4 w-4" /> Terapkan ke draft
+              </Button>
+            )}
+            {canCopy && (
+              <Button type="button" variant="outline" onClick={onCopy} className="gap-2">
+                <Copy className="h-4 w-4" /> Salin versi Inggris
+              </Button>
+            )}
+          </div>
+          {action === "review" && (
+            <p className="admin-ai-apply-notice">
+              Hasil pemeriksaan hanya menjadi panduan. AI tidak mengubah form atau menyimpan data.
+            </p>
+          )}
+          {action === "translate" && (
+            <p className="admin-ai-apply-notice">
+              Terjemahan tidak menimpa isi Indonesia karena database belum memiliki kolom bahasa
+              Inggris.
+            </p>
           )}
           {applyNotice && (
             <p className="admin-ai-apply-notice" role="status" aria-live="polite">
@@ -1178,14 +1268,79 @@ function AiAssistant({
 function aiActionHelp(action: AiAction) {
   switch (action) {
     case "draft":
-      return "AI membuat draf awal berdasarkan isi form yang sedang dibuka.";
+      return "Membuat isi awal untuk field yang masih kosong. Hasilnya bisa diterapkan ke form lalu disimpan manual.";
     case "improve":
-      return "AI merapikan isi form yang sedang dibuka tanpa langsung menyimpannya.";
+      return "Merapikan tulisan yang sudah ada tanpa mengubah ID, relasi burung, status publikasi, atau sumber.";
     case "translate":
-      return "AI membuat versi bahasa Inggris dari isi yang sedang dibuka. Hasilnya hanya preview dan tidak otomatis mengubah data.";
+      return "Membuat salinan bahasa Inggris sebagai preview. Hasilnya tidak menimpa konten bahasa Indonesia.";
     case "review":
-      return "AI memeriksa isi yang sedang dibuka dan menunjukkan bagian yang kurang jelas, meragukan, atau perlu diperbaiki.";
+      return "Memeriksa kelengkapan dan risiko isi. Hasilnya berupa catatan, bukan perubahan otomatis pada form.";
   }
+}
+
+const AI_EDITABLE_FIELDS: Record<AdminEntity, ReadonlySet<string>> = {
+  birds: new Set(["name", "emoji", "scientific_name", "description"]),
+  bird_foods: new Set(["name", "category", "benefits", "note"]),
+  toxic_entries: new Set(["name", "status", "explanation"]),
+  portion_rules: new Set(["size", "condition", "grams", "teaspoon", "morning", "evening"]),
+  recipes: new Set(["title", "purpose", "ingredients", "steps"]),
+  bird_requests: new Set(["bird_name", "local_name", "scientific_name", "admin_notes", "status"]),
+};
+
+function sanitizeAiSuggestion(entity: AdminEntity, suggestion: Record<string, unknown>) {
+  const allowed = AI_EDITABLE_FIELDS[entity];
+  const result: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(suggestion)) {
+    if (!allowed.has(key) || value === undefined) continue;
+
+    if (key === "benefits" || key === "ingredients" || key === "steps") {
+      result[key] = normalizeStringArray(value);
+      continue;
+    }
+
+    if (key === "grams") {
+      const grams = Number(value);
+      if (Number.isFinite(grams) && grams > 0) result[key] = grams;
+      continue;
+    }
+
+    if (key === "category" && (value === "main" || value === "extra")) {
+      result[key] = value;
+      continue;
+    }
+
+    if (key === "status" && entity === "toxic_entries") {
+      if (value === "safe" || value === "caution" || value === "toxic") result[key] = value;
+      continue;
+    }
+
+    if (key === "status" && entity === "bird_requests") {
+      if (
+        value === "pending" ||
+        value === "reviewing" ||
+        value === "rejected" ||
+        value === "duplicate"
+      ) {
+        result[key] = value;
+      }
+      continue;
+    }
+
+    if (key === "size") {
+      if (value === "Kecil" || value === "Standar" || value === "Besar") result[key] = value;
+      continue;
+    }
+
+    if (key === "condition") {
+      if (value === "Harian" || value === "Mabung" || value === "Ternak") result[key] = value;
+      continue;
+    }
+
+    if (typeof value === "string") result[key] = value.trim();
+  }
+
+  return result;
 }
 
 function capitalize(value: string) {
@@ -1239,10 +1394,13 @@ function AdminMessage({
 }
 
 function recordToDraft(record: AdminRecord): AdminRecord {
-  const draft: AdminRecord = {
-    ...record,
-    source_urls: Array.isArray(record.source_urls) ? record.source_urls : [],
-  };
+  const draft: AdminRecord = { ...record };
+
+  // Tidak semua tabel CMS memiliki kolom source_urls. Jangan menambahkan
+  // field virtual ini ke request pengguna karena akan ikut terkirim saat Simpan.
+  if ("source_urls" in record) {
+    draft.source_urls = Array.isArray(record.source_urls) ? record.source_urls : [];
+  }
 
   if ("benefits" in record) {
     draft.benefits = Array.isArray(record.benefits) ? record.benefits : [];

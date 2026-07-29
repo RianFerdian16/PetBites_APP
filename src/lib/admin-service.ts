@@ -28,6 +28,94 @@ export type AdminData = {
 
 export type AiAction = "draft" | "improve" | "translate" | "review";
 
+const ENTITY_COLUMNS: Record<AdminEntity, ReadonlySet<string>> = {
+  birds: new Set([
+    "id",
+    "name",
+    "emoji",
+    "image_url",
+    "scientific_name",
+    "description",
+    "sort_order",
+    "is_active",
+    "review_status",
+    "source_urls",
+    "content_status",
+    "ai_generated",
+    "ai_model",
+    "ai_generated_at",
+  ]),
+  bird_foods: new Set([
+    "id",
+    "bird_id",
+    "name",
+    "category",
+    "benefits",
+    "note",
+    "sort_order",
+    "review_status",
+    "source_urls",
+    "content_status",
+    "ai_generated",
+    "ai_model",
+    "ai_generated_at",
+  ]),
+  toxic_entries: new Set([
+    "id",
+    "bird_id",
+    "name",
+    "status",
+    "explanation",
+    "sort_order",
+    "review_status",
+    "source_urls",
+    "content_status",
+    "ai_generated",
+    "ai_model",
+    "ai_generated_at",
+  ]),
+  portion_rules: new Set([
+    "id",
+    "bird_id",
+    "size",
+    "condition",
+    "grams",
+    "teaspoon",
+    "morning",
+    "evening",
+    "sort_order",
+    "review_status",
+    "source_urls",
+    "content_status",
+    "ai_generated",
+    "ai_model",
+    "ai_generated_at",
+  ]),
+  recipes: new Set([
+    "id",
+    "bird_id",
+    "title",
+    "purpose",
+    "sort_order",
+    "review_status",
+    "source_urls",
+    "content_status",
+    "ai_generated",
+    "ai_model",
+    "ai_generated_at",
+  ]),
+  bird_requests: new Set([
+    "id",
+    "bird_name",
+    "local_name",
+    "scientific_name",
+    "reason",
+    "contact",
+    "status",
+    "admin_notes",
+  ]),
+};
+
 export async function getAdminSession(): Promise<Session | null> {
   const { data, error } = await getSupabaseClient().auth.getSession();
   if (error) throw error;
@@ -111,24 +199,16 @@ export async function fetchAdminData(): Promise<AdminData> {
 
 export async function saveAdminRecord(entity: AdminEntity, record: AdminRecord) {
   const supabase = getSupabaseClient();
-  const payload = { ...record };
-  delete payload.created_at;
-  delete payload.updated_at;
-  delete payload.ingredients;
-  delete payload.steps;
+  const ingredients = entity === "recipes" ? normalizeLines(record.ingredients) : [];
+  const steps = entity === "recipes" ? normalizeLines(record.steps) : [];
 
-  // `benefits` hanya merupakan kolom pada tabel bird_foods. Editor CMS
-  // sebelumnya menambahkan array kosong ini ke semua jenis konten, sehingga
-  // Supabase menolak penyimpanan birds dengan error schema cache.
-  if (entity === "bird_foods") {
-    payload.benefits = normalizeLines(record.benefits);
-  } else {
-    delete payload.benefits;
-  }
+  const normalized: Record<string, unknown> = { ...record };
+  if (entity === "bird_foods") normalized.benefits = normalizeLines(record.benefits);
+  if (entity !== "bird_requests") normalized.source_urls = normalizeLines(record.source_urls);
+
+  const payload = pickAllowedColumns(entity, normalized);
 
   if (entity === "recipes") {
-    const ingredients = normalizeLines(record.ingredients);
-    const steps = normalizeLines(record.steps);
     const { error: recipeError } = await supabase
       .from("recipes")
       .upsert(payload, { onConflict: "id" });
@@ -204,17 +284,52 @@ export async function requestAiSuggestion(input: {
   const { data, error } = await getSupabaseClient().functions.invoke("petbites-ai", {
     body: input,
   });
-  if (error) throw error;
+
+  if (error) throw new Error(await readFunctionError(error));
   if (!data || typeof data !== "object") throw new Error("Respons AI tidak valid.");
-  return data as { suggestion?: Record<string, unknown>; text?: string; model?: string };
+
+  return data as {
+    suggestion?: Record<string, unknown> | null;
+    text?: string;
+    model?: string;
+  };
+}
+
+function pickAllowedColumns(entity: AdminEntity, record: Record<string, unknown>) {
+  const allowed = ENTITY_COLUMNS[entity];
+  return Object.fromEntries(
+    Object.entries(record).filter(([key, value]) => allowed.has(key) && value !== undefined),
+  );
+}
+
+async function readFunctionError(error: unknown) {
+  const fallback =
+    error instanceof Error ? error.message : "Edge Function gagal memproses permintaan AI.";
+  if (!error || typeof error !== "object" || !("context" in error)) return fallback;
+
+  const context = (error as { context?: unknown }).context;
+  if (!context || typeof context !== "object") return fallback;
+
+  try {
+    if ("clone" in context && typeof context.clone === "function") {
+      const response = context.clone() as Response;
+      const body = (await response.json()) as { error?: unknown; message?: unknown };
+      return String(body.error ?? body.message ?? fallback);
+    }
+  } catch {
+    return fallback;
+  }
+
+  return fallback;
 }
 
 function normalizeLines(value: unknown): string[] {
-  if (Array.isArray(value))
+  if (Array.isArray(value)) {
     return value
       .map(String)
       .map((item) => item.trim())
       .filter(Boolean);
+  }
   if (typeof value !== "string") return [];
   return value
     .split(/\r?\n/)
