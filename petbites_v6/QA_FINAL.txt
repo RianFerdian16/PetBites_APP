@@ -1,0 +1,15 @@
+PETBITES FINAL QA
+
+Passed:
+- TypeScript: npm run typecheck
+- ESLint: npm run lint
+- Prettier: npm run format:check
+
+Asset status:
+- Forest light WebP: ~39 KB
+- Forest dark WebP: ~34 KB
+- Welcome bird assets: ~49 KB total
+- Bird photos: WebP and lazy-loaded on list cards
+
+Build note:
+The uploaded node_modules came from Windows. Linux build verification could not load its platform-specific Rolldown binding. Run `npm run qa` on the user's Windows project; typecheck, lint, and formatting already passed in the review environment.
